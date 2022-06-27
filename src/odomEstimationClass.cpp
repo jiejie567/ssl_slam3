@@ -71,7 +71,11 @@ bool OdomEstimationClass::initialize(void){
     }
 
     if(fabs(Utils::gravity.norm() - acc_mean.norm())>0.02)
+    {
         ROS_WARN("the gravity is wrong! measured gravity = %f", acc_mean.norm());
+        ROS_WARN("Use the measured gravity temporarily");
+        Utils::gravity = acc_mean;
+    }
     else
         Utils::gravity = acc_mean;
 
