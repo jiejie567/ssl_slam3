@@ -49,13 +49,6 @@ void velodyneHandler(const sensor_msgs::PointCloud2ConstPtr &laserCloudMsg)
 }
 void RGBDHandler(const sensor_msgs::ImageConstPtr& msgRGB,const sensor_msgs::ImageConstPtr& msgD)
 {
-    const double camera_factor = 1000;
-    const double camera_cx = 333.891;
-    const double camera_cy = 254.687;
-    const double camera_fx = 597.53;
-    const double camera_fy = 597.795;
-    const float max_use_range = 9.0;
-    const float min_use_range = 0.6;
 
     //read data
     laserProcessing.frame_count++;
@@ -69,27 +62,24 @@ void RGBDHandler(const sensor_msgs::ImageConstPtr& msgRGB,const sensor_msgs::Ima
     depth_pic = depth_ptr->image;
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud ( new pcl::PointCloud<pcl::PointXYZRGB> );
     ros::Time pointcloud_time = msgRGB->header.stamp;
+    double ThMaxDepth = laserProcessing.lidar_param.getMaxDistance() * laserProcessing.lidar_param.getCameraFactor();
+    double ThMinDepth = laserProcessing.lidar_param.getMinDistance() * laserProcessing.lidar_param.getCameraFactor();
     for (int m = 0; m < depth_pic.rows; m++){
         for (int n = 0; n < depth_pic.cols; n++){
-            if(depth_pic.ptr<float>(m)[n] > max_use_range * camera_factor ||
-            depth_pic.ptr<float>(m)[n] < min_use_range * camera_factor)
+            if(depth_pic.ptr<float>(m)[n] <  ThMinDepth ||
+            depth_pic.ptr<float>(m)[n] > ThMaxDepth)
                 depth_pic.ptr<float>(m)[n] = 0.;//depth filter
             float d = depth_pic.ptr<float>(m)[n];//ushort d = depth_pic.ptr<ushort>(m)[n];
             if (d == 0.)
                 continue;
             pcl::PointXYZRGB p;
-
-            p.z = double(d) / camera_factor;
-    //            if(m==(int)(depth_pic.rows/2)&&n==(int)(depth_pic.cols/2))
-    //                cout<<double(d)<<endl;
-            p.x = (n - camera_cx) * p.z / camera_fx;
-            p.y = (m - camera_cy) * p.z / camera_fy;
-
+            p.z = double(d) /  laserProcessing.lidar_param.camera_factor;
+            p.x = (n - laserProcessing.lidar_param.camera_cx) * p.z / laserProcessing.lidar_param.camera_fx;
+            p.y = (m - laserProcessing.lidar_param.camera_cy) * p.z / laserProcessing.lidar_param.camera_fy;
 
             p.b = color_pic.ptr<uchar>(m)[n*3];
             p.g = color_pic.ptr<uchar>(m)[n*3+1];
             p.r = color_pic.ptr<uchar>(m)[n*3+2];
-
             cloud->points.push_back( p );
         }
     }

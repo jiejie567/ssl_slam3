@@ -17,8 +17,13 @@ common:
 
 lidar:  
     frequency: 30 
-    min_distance: 0.2           
-    max_distance: 8.0                               
+    camera_factor: 1000.0
+    camera_cx: 333.891
+    camera_cy: 254.687
+    camera_fx: 597.53
+    camera_fy: 597.795
+    min_distance: 0.25
+    max_distance: 9.0
     horizontal_angle: 70.0
     odom_n_rpy: 1.0e-2        
     odom_n_xyz: 1.0e-2

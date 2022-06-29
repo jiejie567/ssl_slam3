@@ -89,7 +89,12 @@ void LidarParam::loadParam(std::string& path){
     if(!fsSettings.isOpened())
         cerr << "ERROR: Wrong path to settings" << endl;
     cv::FileNode node = fsSettings["lidar"]; 
-    min_distance = readDouble(node,"min_distance",0.2);
+    camera_factor = readDouble(node,"camera_factor",1000);
+    camera_cx = readDouble(node,"camera_cx",333.891);
+    camera_cy = readDouble(node,"camera_cy",254.687);
+    camera_fx = readDouble(node,"camera_fx",597.53);
+    camera_fy = readDouble(node,"camera_fy",597.795);
+    min_distance = readDouble(node,"min_distance",0.25);
     max_distance = readDouble(node,"max_distance",9.0);
     horizontal_angle = readDouble(node,"horizontal_angle",70.0);
     map_resolution = readDouble(node,"map_resolution",0.05);
@@ -116,6 +121,9 @@ void LidarParam::loadParam(std::string& path){
 }
 int LidarParam::getFrequency(){
     return frequency;
+}
+double LidarParam::getCameraFactor(){
+    return camera_factor;
 }
 double LidarParam::getMinDistance(){
     return min_distance;

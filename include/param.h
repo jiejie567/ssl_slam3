@@ -34,6 +34,7 @@ class LidarParam{
         LidarParam(){};
         void loadParam(std::string& path);
         int getFrequency(void);
+        double getCameraFactor(void);
         double getMinDistance(void);
         double getMaxDistance(void);
         double getHorizontalAngle(void);
@@ -49,6 +50,11 @@ class LidarParam{
         int getMapCellWidthRange(void);
         int getMapCellHeightRange(void);
         int getMapCellDepthRange(void);
+        double camera_factor;
+        double camera_cx;
+        double camera_cy;
+        double camera_fx;
+        double camera_fy;
     private:
         int frequency;
         double min_distance;
