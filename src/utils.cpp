@@ -164,5 +164,6 @@ void TicToc::toc(int freq){
     total_time+= elapsed_seconds.count() * 1000;
     total_frame++;
     if(total_frame%freq==0)
-        std::cout<<"the average time of " << name <<" is "<< elapsed_seconds.count() * 1000 << "ms"<<std::endl;
+//        std::cout<<"the average time of " << name <<" is "<< elapsed_seconds.count() * 1000 << "ms"<<std::endl;
+        std::cout<<"the average time of " << name <<" is "<< total_time/total_frame << "ms"<<std::endl;
 }

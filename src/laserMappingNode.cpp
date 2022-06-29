@@ -47,6 +47,7 @@ void velodyneHandler(const sensor_msgs::PointCloud2ConstPtr &laserCloudMsg)
     mutex_lock.unlock();
 }
 
+
 int update_count = 0;
 int frame_id=0;
 void laser_mapping(){

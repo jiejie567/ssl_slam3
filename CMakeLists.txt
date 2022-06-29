@@ -17,6 +17,8 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   tf
   eigen_conversions
+  cv_bridge
+  image_transport
 )
 
 find_package(Eigen3)
