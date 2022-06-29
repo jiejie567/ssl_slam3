@@ -41,7 +41,8 @@ class LaserProcessingClass {
 		void init(std::string& file_path);
 		void featureExtraction(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr& pc_in, pcl::PointCloud<pcl::PointXYZRGB>::Ptr& pc_out_edge, pcl::PointCloud<pcl::PointXYZRGB>::Ptr& pc_out_surf);
 		void featureExtractionFromSector(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr& pc_in, std::vector<Double2d>& cloudCurvature, pcl::PointCloud<pcl::PointXYZRGB>::Ptr& pc_out_edge, pcl::PointCloud<pcl::PointXYZRGB>::Ptr& pc_out_surf);
-	private:
+        int frame_count;
+    private:
      	LidarParam lidar_param;
      	pcl::VoxelGrid<pcl::PointXYZRGB> edge_downsize_filter;
      	pcl::VoxelGrid<pcl::PointXYZRGB> surf_downsize_filter;
