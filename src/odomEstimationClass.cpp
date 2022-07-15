@@ -117,10 +117,12 @@ void OdomEstimationClass::addLidarFeature(const pcl::PointCloud<pcl::PointXYZRGB
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr downsized_edge = pcl::PointCloud<pcl::PointXYZRGB>::Ptr(new pcl::PointCloud<pcl::PointXYZRGB>());
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr downsized_surf = pcl::PointCloud<pcl::PointXYZRGB>::Ptr(new pcl::PointCloud<pcl::PointXYZRGB>());
 
-    edge_downsize_filter.setInputCloud(edge_in);
-    edge_downsize_filter.filter(*downsized_edge);
-    surf_downsize_filter.setInputCloud(surf_in);
-    surf_downsize_filter.filter(*downsized_surf); 
+//    edge_downsize_filter.setInputCloud(edge_in);
+//    edge_downsize_filter.filter(*downsized_edge);
+    downsized_edge=edge_in;
+//    surf_downsize_filter.setInputCloud(surf_in);
+//    surf_downsize_filter.filter(*downsized_surf);
+    downsized_surf=surf_in;
 
     Eigen::Isometry3f T_bl = common_param.getTbl().cast<float>();
     pcl::transformPointCloud(*downsized_edge, *current_edge_points, T_bl);   
@@ -174,6 +176,7 @@ void OdomEstimationClass::addEdgeCost(ceres::Problem& problem, ceres::LossFuncti
             }                           
         }
     }
+//    cout<<"edge_num = "<< edge_num <<endl;
     if(edge_num<20){
         std::cout<<"not enough correct edge points"<<std::endl;
     }
@@ -227,6 +230,7 @@ void OdomEstimationClass::addSurfCost(ceres::Problem& problem, ceres::LossFuncti
         }
 
     }
+//    cout<<"surf_num = "<< surf_num <<endl;
     if(surf_num<20){
         std::cout<<"not enough correct surf points"<<std::endl;
     }
@@ -289,6 +293,8 @@ void OdomEstimationClass::optimize(void){
             addImuCost(imu_preintegrator_arr[i], problem, loss_function, pose[pose_id], pose[pose_id+1]);
         }
 
+
+        auto  a = pose[pose_size-1];
         addEdgeCost(problem, loss_function, pose[pose_size-1]);
         addSurfCost(problem, loss_function, pose[pose_size-1]);
 

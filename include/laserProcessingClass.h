@@ -15,9 +15,18 @@
 #include <pcl/filters/crop_box.h>
 #include <pcl/filters/statistical_outlier_removal.h>
 #include <pcl/filters/radius_outlier_removal.h>
+#include <pcl/sample_consensus/ransac.h>
+#include <pcl/sample_consensus/sac_model_plane.h> // 拟合平面
+#include <pcl/sample_consensus/sac_model_line.h> // 拟合直线
+
+#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
+#include "opencv2/ximgproc.hpp"
+#include "opencv2/imgcodecs.hpp"
 
 #include "param.h"
 #include <ros/ros.h>
+#include "AHCPlaneFitter.hpp"
 
 //points covariance class
 class Double2d{
@@ -40,7 +49,8 @@ class LaserProcessingClass {
     	LaserProcessingClass();
 		void init(std::string& file_path);
 		void featureExtraction(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr& pc_in, pcl::PointCloud<pcl::PointXYZRGB>::Ptr& pc_out_edge, pcl::PointCloud<pcl::PointXYZRGB>::Ptr& pc_out_surf);
-		void featureExtractionFromSector(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr& pc_in, std::vector<Double2d>& cloudCurvature, pcl::PointCloud<pcl::PointXYZRGB>::Ptr& pc_out_edge, pcl::PointCloud<pcl::PointXYZRGB>::Ptr& pc_out_surf);
+        void featureExtraction(cv::Mat& color_im,cv::Mat& depth_im, pcl::PointCloud<pcl::PointXYZRGB>::Ptr& pc_out_edge, pcl::PointCloud<pcl::PointXYZRGB>::Ptr& pc_out_surf);
+        void featureExtractionFromSector(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr& pc_in, std::vector<Double2d>& cloudCurvature, pcl::PointCloud<pcl::PointXYZRGB>::Ptr& pc_out_edge, pcl::PointCloud<pcl::PointXYZRGB>::Ptr& pc_out_surf);
         int frame_count;
         LidarParam lidar_param;
     private:

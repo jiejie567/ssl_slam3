@@ -56,14 +56,14 @@ void RGBDHandler(const sensor_msgs::ImageConstPtr& msgRGB,const sensor_msgs::Ima
         return;
     cv_bridge::CvImagePtr color_ptr, depth_ptr;
     cv::Mat color_pic, depth_pic;
-     color_ptr = cv_bridge::toCvCopy(msgRGB, sensor_msgs::image_encodings::BGR8);
+    color_ptr = cv_bridge::toCvCopy(msgRGB, sensor_msgs::image_encodings::BGR8);
     color_pic = color_ptr->image;
     depth_ptr = cv_bridge::toCvCopy(msgD, sensor_msgs::image_encodings::TYPE_32FC1);
     depth_pic = depth_ptr->image;
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud ( new pcl::PointCloud<pcl::PointXYZRGB> );
     ros::Time pointcloud_time = msgRGB->header.stamp;
-    double ThMaxDepth = laserProcessing.lidar_param.getMaxDistance() * laserProcessing.lidar_param.getCameraFactor();
-    double ThMinDepth = laserProcessing.lidar_param.getMinDistance() * laserProcessing.lidar_param.getCameraFactor();
+    double ThMaxDepth = laserProcessing.lidar_param.max_distance * laserProcessing.lidar_param.camera_factor;
+    double ThMinDepth = laserProcessing.lidar_param.min_distance * laserProcessing.lidar_param.camera_factor;
     for (int m = 0; m < depth_pic.rows; m++){
         for (int n = 0; n < depth_pic.cols; n++){
             if(depth_pic.ptr<float>(m)[n] <  ThMinDepth ||
@@ -89,14 +89,15 @@ void RGBDHandler(const sensor_msgs::ImageConstPtr& msgRGB,const sensor_msgs::Ima
 
     static TicToc timer("laser processing");
     timer.tic();
-    laserProcessing.featureExtraction(cloud, pointcloud_edge,pointcloud_surf);
-    timer.toc(300);
+    laserProcessing.featureExtraction(color_pic,depth_pic, pointcloud_edge,pointcloud_surf);
+    timer.toc(20);
+
 
     sensor_msgs::PointCloud2 laserCloudFilteredMsg;
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr pointcloud_filtered(new pcl::PointCloud<pcl::PointXYZRGB>());
     *pointcloud_filtered+=*pointcloud_edge;
     *pointcloud_filtered+=*pointcloud_surf;
-    pcl::toROSMsg(*pointcloud_filtered, laserCloudFilteredMsg);
+    pcl::toROSMsg(*cloud, laserCloudFilteredMsg);
     laserCloudFilteredMsg.header.stamp = pointcloud_time;
     laserCloudFilteredMsg.header.frame_id = "camera_depth_optical_frame";
     pubLaserCloudFiltered.publish(laserCloudFilteredMsg);

@@ -119,18 +119,7 @@ void LidarParam::loadParam(std::string& path){
     map_cell_depth_range = readInt(node,"map_cell_depth_range",2);
     fsSettings.release();
 }
-int LidarParam::getFrequency(){
-    return frequency;
-}
-double LidarParam::getCameraFactor(){
-    return camera_factor;
-}
-double LidarParam::getMinDistance(){
-    return min_distance;
-}
-double LidarParam::getMaxDistance(){
-    return max_distance;
-}
+
 double LidarParam::getHorizontalAngle(){
     return horizontal_angle;
 }

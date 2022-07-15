@@ -33,10 +33,6 @@ class LidarParam{
     public:
         LidarParam(){};
         void loadParam(std::string& path);
-        int getFrequency(void);
-        double getCameraFactor(void);
-        double getMinDistance(void);
-        double getMaxDistance(void);
         double getHorizontalAngle(void);
         double getMapResolution(void);
         Eigen::Matrix<double, 6, 1> getOdomN(void);
@@ -55,10 +51,10 @@ class LidarParam{
         double camera_cy;
         double camera_fx;
         double camera_fy;
-    private:
-        int frequency;
         double min_distance;
         double max_distance;
+    private:
+        int frequency;
         double horizontal_angle;
         double map_resolution;
         Eigen::Matrix<double, 6, 1> odom_n;

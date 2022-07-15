@@ -29,7 +29,8 @@ find_package(octomap REQUIRED)
 
 include_directories(
   include
-  ${catkin_INCLUDE_DIRS} 
+  include/peac
+  ${catkin_INCLUDE_DIRS}
   ${PCL_INCLUDE_DIRS}
   ${CERES_INCLUDE_DIRS}
   ${EIGEN3_INCLUDE_DIRS}

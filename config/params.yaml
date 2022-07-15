@@ -1,7 +1,7 @@
 %YAML:1.0
 
 common:
-    core_num: 3
+    core_num: 4
     init_frame: 10
     nearby_frame: 6
 

@@ -71,24 +71,8 @@ Visualization Manager:
       Frame Timeout: 15
       Frames:
         All Enabled: false
-        camera_accel_frame:
-          Value: true
-        camera_accel_optical_frame:
-          Value: true
-        camera_color_frame:
-          Value: true
-        camera_color_optical_frame:
-          Value: true
-        camera_depth_frame:
-          Value: true
         camera_depth_optical_frame:
           Value: false
-        camera_gyro_frame:
-          Value: true
-        camera_imu_optical_frame:
-          Value: true
-        camera_link:
-          Value: true
         map:
           Value: false
         odom:
@@ -173,7 +157,7 @@ Visualization Manager:
       Color: 255; 255; 255
       Color Transformer: RGB8
       Decay Time: 0
-      Enabled: false
+      Enabled: true
       Invert Rainbow: false
       Max Color: 255; 255; 255
       Min Color: 0; 0; 0
@@ -188,7 +172,7 @@ Visualization Manager:
       Unreliable: false
       Use Fixed Frame: true
       Use rainbow: true
-      Value: false
+      Value: true
     - Alpha: 1
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
@@ -273,7 +257,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/XYOrbit
-      Distance: 3.9463510513305664
+      Distance: 4.0995941162109375
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -289,9 +273,9 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.14479708671569824
+      Pitch: 0.6697970032691956
       Target Frame: map
-      Yaw: 2.6367413997650146
+      Yaw: 2.991734504699707
     Saved: ~
 Window Geometry:
   Displays:
@@ -312,4 +296,4 @@ Window Geometry:
     collapsed: false
   Width: 1469
   X: 106
-  Y: 59
+  Y: 22
