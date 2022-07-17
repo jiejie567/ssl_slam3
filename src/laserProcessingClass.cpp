@@ -191,56 +191,6 @@ void LaserProcessingClass::featureExtraction(cv::Mat& color_im, cv::Mat& depth_i
 }
 
 
-void LaserProcessingClass::featureExtractionFromSector(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr& pc_in, std::vector<Double2d>& cloudCurvature, pcl::PointCloud<pcl::PointXYZRGB>::Ptr& pc_out_edge, pcl::PointCloud<pcl::PointXYZRGB>::Ptr& pc_out_surf){
-
-    std::sort(cloudCurvature.begin(), cloudCurvature.end(), [](const Double2d & a, const Double2d & b)
-    { 
-        return a.value < b.value; 
-    });
-
-    int largestPickedNum = 0;
-    std::vector<int> edge_points;
-    std::vector<int> picked_points;
-    int point_info_count =0;
-    for (int i = cloudCurvature.size()-1; i >= 0; i--)
-    {
-        int ind = cloudCurvature[i].id; 
-        if(std::find(picked_points.begin(), picked_points.end(), ind)==picked_points.end()){
-            if(cloudCurvature[i].value <= 0.1){
-                break;
-            }
-            // cout<<cloudCurvature[i].value<<endl;
-            largestPickedNum++;
-            picked_points.push_back(ind);
-            
-            if (largestPickedNum <= 10){
-                edge_points.push_back(ind);
-                pc_out_edge->push_back(pc_in->points[ind]);
-                point_info_count++;
-            }else{
-                break;
-            }
-
-            for(int k=-5;k<=5;k++){
-                if(k!=0)
-                    picked_points.push_back(ind+k);
-            }
-
-        }
-    }
-    
-    for (int i = 0; i <= (int)cloudCurvature.size()-1; i++){
-        int ind = cloudCurvature[i].id; 
-        if( std::find(edge_points.begin(), edge_points.end(), ind)==edge_points.end()){
-            pc_out_surf->push_back(pc_in->points[ind]);
-        }
-    }
-    
-}
-
-LaserProcessingClass::LaserProcessingClass(){  
-}
-
 Double2d::Double2d(int id_in, double value_in){
     id = id_in;
     value = value_in;

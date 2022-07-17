@@ -94,7 +94,7 @@ void laser_mapping(){
                 static TicToc timer("laser mapping");
                 timer.tic();
                 laserMapping.updateCurrentPointsToMap(pointcloud_in,current_pose);
-                timer.toc(30);
+                timer.toc(5);
                 pcl::PointCloud<pcl::PointXYZRGB>::Ptr pc_map = laserMapping.getMap();
                 sensor_msgs::PointCloud2 PointsMsg;
                 pcl::toROSMsg(*pc_map, PointsMsg);

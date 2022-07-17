@@ -52,8 +52,8 @@ void RGBDHandler(const sensor_msgs::ImageConstPtr& msgRGB,const sensor_msgs::Ima
 
     //read data
     laserProcessing.frame_count++;
-    if(laserProcessing.frame_count%3!=0)
-        return;
+//    if(laserProcessing.frame_count%4!=0)
+//        return;
     cv_bridge::CvImagePtr color_ptr, depth_ptr;
     cv::Mat color_pic, depth_pic;
     color_ptr = cv_bridge::toCvCopy(msgRGB, sensor_msgs::image_encodings::BGR8);
@@ -125,8 +125,8 @@ int main(int argc, char **argv)
     nh.getParam("/file_path", file_path); 
     laserProcessing.init(file_path);
 
-    message_filters::Subscriber<sensor_msgs::Image> rgb_sub(nh, "/camera/color/image_raw", 100);
-    message_filters::Subscriber<sensor_msgs::Image> depth_sub(nh, "/camera/aligned_depth_to_color/image_raw", 100);
+    message_filters::Subscriber<sensor_msgs::Image> rgb_sub(nh, "/camera/color/image_raw", 1);
+    message_filters::Subscriber<sensor_msgs::Image> depth_sub(nh, "/camera/aligned_depth_to_color/image_raw", 1);
     typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::Image, sensor_msgs::Image> sync_pol;
     message_filters::Synchronizer<sync_pol> sync(sync_pol(10), rgb_sub,depth_sub);
     sync.registerCallback(boost::bind(&RGBDHandler, _1, _2));
@@ -135,7 +135,12 @@ int main(int argc, char **argv)
     pubEdgePoints = nh.advertise<sensor_msgs::PointCloud2>("/laser_cloud_edge", 100);
     pubSurfPoints = nh.advertise<sensor_msgs::PointCloud2>("/laser_cloud_surf", 100);
 
-    ros::spin();
+    ros::Rate loop_rate(10);
+    while (ros::ok())
+    {
+        ros::spinOnce();
+        loop_rate.sleep();
+    }
 
     return 0;
 }
