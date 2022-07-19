@@ -47,9 +47,9 @@ class OdomEstimationClass{
 		OdomEstimationClass();
 		void init(std::string& file_path);
 		bool initialize(void);
-		void initMapWithPoints(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr edge_in, const pcl::PointCloud<pcl::PointXYZRGB>::Ptr surf_in);
+		void initMapWithPoints(const pcl::PointCloud<pcl::PointXYZRGBL>::Ptr edge_in, const pcl::PointCloud<pcl::PointXYZRGBL>::Ptr surf_in);
 		void addImuPreintegration(std::vector<double> dt_arr, std::vector<Eigen::Vector3d> acc_arr, std::vector<Eigen::Vector3d> gyr_arr);
-		void addLidarFeature(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr edge_in, const pcl::PointCloud<pcl::PointXYZRGB>::Ptr surf_in);
+		void addLidarFeature(const pcl::PointCloud<pcl::PointXYZRGBL>::Ptr edge_in, const pcl::PointCloud<pcl::PointXYZRGBL>::Ptr surf_in);
 		void optimize(void);
 
 	private:
@@ -58,18 +58,20 @@ class OdomEstimationClass{
 		ImuParam imu_param;
 
 		// map points
-		pcl::PointCloud<pcl::PointXYZRGB>::Ptr edge_map;
-		pcl::PointCloud<pcl::PointXYZRGB>::Ptr surf_map;
-		pcl::PointCloud<pcl::PointXYZRGB>::Ptr current_edge_points;
-		pcl::PointCloud<pcl::PointXYZRGB>::Ptr current_surf_points;
+		pcl::PointCloud<pcl::PointXYZRGBL>::Ptr edge_map;
+		pcl::PointCloud<pcl::PointXYZRGBL>::Ptr surf_map;
+		pcl::PointCloud<pcl::PointXYZRGBL>::Ptr current_edge_points;
+		pcl::PointCloud<pcl::PointXYZRGBL>::Ptr current_surf_points;
+        pcl::PointCloud<pcl::PointXYZRGBL>::Ptr current_plane_info_cloud;
+		int current_plane_num;
 
 		// kdtree for fast indexing
-		pcl::KdTreeFLANN<pcl::PointXYZRGB> edge_kd_tree;
-		pcl::KdTreeFLANN<pcl::PointXYZRGB> surf_kd_tree;
+		pcl::KdTreeFLANN<pcl::PointXYZRGBL> edge_kd_tree;
+		pcl::KdTreeFLANN<pcl::PointXYZRGBL> surf_kd_tree;
 
 		// points downsampling before add to map
-		pcl::VoxelGrid<pcl::PointXYZRGB> edge_downsize_filter;
-		pcl::VoxelGrid<pcl::PointXYZRGB> surf_downsize_filter;
+		pcl::VoxelGrid<pcl::PointXYZRGBL> edge_downsize_filter;
+		pcl::VoxelGrid<pcl::PointXYZRGBL> surf_downsize_filter;
 		
 		void addEdgeCost(ceres::Problem& problem, ceres::LossFunction *loss_function, double* pose);
 		void addSurfCost(ceres::Problem& problem, ceres::LossFunction *loss_function, double* pose);

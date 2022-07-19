@@ -95,8 +95,8 @@ bool synchronizeSensors(void){
             //clear imu buf
             while(!imu_buf.empty() && imu_buf.front()->header.stamp.toSec() < lidar_time)
                 imu_buf.pop();
-            pcl::PointCloud<pcl::PointXYZRGB>::Ptr edge_points_in(new pcl::PointCloud<pcl::PointXYZRGB>());
-            pcl::PointCloud<pcl::PointXYZRGB>::Ptr surf_points_in(new pcl::PointCloud<pcl::PointXYZRGB>());
+            pcl::PointCloud<pcl::PointXYZRGBL>::Ptr edge_points_in(new pcl::PointCloud<pcl::PointXYZRGBL>());
+            pcl::PointCloud<pcl::PointXYZRGBL>::Ptr surf_points_in(new pcl::PointCloud<pcl::PointXYZRGBL>());
             pcl::fromROSMsg(*edge_points_buf.front(), *edge_points_in);
             pcl::fromROSMsg(*surf_points_buf.front(), *surf_points_in);
             odom_estimator.initMapWithPoints(edge_points_in, surf_points_in);
@@ -170,8 +170,8 @@ void odom_estimation(){
             gyr_arr.push_back(Eigen::Vector3d(message_syn_buf[0].first.back()->angular_velocity.x, message_syn_buf[0].first.back()->angular_velocity.y, message_syn_buf[0].first.back()->angular_velocity.z));
             ROS_WARN_ONCE("imu stamp is not synchronized! perform auto synchronization");
         }
-        pcl::PointCloud<pcl::PointXYZRGB>::Ptr edge_points_in(new pcl::PointCloud<pcl::PointXYZRGB>());
-        pcl::PointCloud<pcl::PointXYZRGB>::Ptr surf_points_in(new pcl::PointCloud<pcl::PointXYZRGB>());
+        pcl::PointCloud<pcl::PointXYZRGBL>::Ptr edge_points_in(new pcl::PointCloud<pcl::PointXYZRGBL>());
+        pcl::PointCloud<pcl::PointXYZRGBL>::Ptr surf_points_in(new pcl::PointCloud<pcl::PointXYZRGBL>());
         pcl::fromROSMsg(*(message_syn_buf[0].second[0]), *edge_points_in);
         pcl::fromROSMsg(*(message_syn_buf[0].second[1]), *surf_points_in);
 

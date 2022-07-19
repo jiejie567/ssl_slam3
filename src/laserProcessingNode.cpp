@@ -84,8 +84,8 @@ void RGBDHandler(const sensor_msgs::ImageConstPtr& msgRGB,const sensor_msgs::Ima
         }
     }
 //    cout<<1<<endl;
-    pcl::PointCloud<pcl::PointXYZRGB>::Ptr pointcloud_edge(new pcl::PointCloud<pcl::PointXYZRGB>());
-    pcl::PointCloud<pcl::PointXYZRGB>::Ptr pointcloud_surf(new pcl::PointCloud<pcl::PointXYZRGB>());
+    pcl::PointCloud<pcl::PointXYZRGBL>::Ptr pointcloud_edge(new pcl::PointCloud<pcl::PointXYZRGBL>());
+    pcl::PointCloud<pcl::PointXYZRGBL>::Ptr pointcloud_surf(new pcl::PointCloud<pcl::PointXYZRGBL>());
 
     static TicToc timer("laser processing");
     timer.tic();
@@ -94,9 +94,6 @@ void RGBDHandler(const sensor_msgs::ImageConstPtr& msgRGB,const sensor_msgs::Ima
 
 
     sensor_msgs::PointCloud2 laserCloudFilteredMsg;
-    pcl::PointCloud<pcl::PointXYZRGB>::Ptr pointcloud_filtered(new pcl::PointCloud<pcl::PointXYZRGB>());
-    *pointcloud_filtered+=*pointcloud_edge;
-    *pointcloud_filtered+=*pointcloud_surf;
     pcl::toROSMsg(*cloud, laserCloudFilteredMsg);
     laserCloudFilteredMsg.header.stamp = pointcloud_time;
     laserCloudFilteredMsg.header.frame_id = "camera_depth_optical_frame";

@@ -14,10 +14,12 @@ OdomEstimationClass::OdomEstimationClass(){
     imu_preintegrator_arr.clear();
     is_initialized = false;
 
-    edge_map = pcl::PointCloud<pcl::PointXYZRGB>::Ptr(new pcl::PointCloud<pcl::PointXYZRGB>());
-    surf_map = pcl::PointCloud<pcl::PointXYZRGB>::Ptr(new pcl::PointCloud<pcl::PointXYZRGB>());
-    current_edge_points = pcl::PointCloud<pcl::PointXYZRGB>::Ptr(new pcl::PointCloud<pcl::PointXYZRGB>());
-    current_surf_points = pcl::PointCloud<pcl::PointXYZRGB>::Ptr(new pcl::PointCloud<pcl::PointXYZRGB>());
+    edge_map = pcl::PointCloud<pcl::PointXYZRGBL>::Ptr(new pcl::PointCloud<pcl::PointXYZRGBL>());
+    surf_map = pcl::PointCloud<pcl::PointXYZRGBL>::Ptr(new pcl::PointCloud<pcl::PointXYZRGBL>());
+    current_edge_points = pcl::PointCloud<pcl::PointXYZRGBL>::Ptr(new pcl::PointCloud<pcl::PointXYZRGBL>());
+    current_surf_points = pcl::PointCloud<pcl::PointXYZRGBL>::Ptr(new pcl::PointCloud<pcl::PointXYZRGBL>());
+    current_plane_info_cloud = pcl::PointCloud<pcl::PointXYZRGBL>::Ptr(new pcl::PointCloud<pcl::PointXYZRGBL>());
+    current_plane_num=0;
 
 }
 
@@ -33,7 +35,7 @@ void OdomEstimationClass::init(std::string& file_path){
     surf_downsize_filter.setLeafSize(map_resolution * 2, map_resolution * 2, map_resolution * 2);
 }
 
-void OdomEstimationClass::initMapWithPoints(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr edge_in, const pcl::PointCloud<pcl::PointXYZRGB>::Ptr surf_in){
+void OdomEstimationClass::initMapWithPoints(const pcl::PointCloud<pcl::PointXYZRGBL>::Ptr edge_in, const pcl::PointCloud<pcl::PointXYZRGBL>::Ptr surf_in){
     *edge_map += *edge_in;
     *surf_map += *surf_in;
     edge_kd_tree.setInputCloud(edge_map);
@@ -113,29 +115,33 @@ void OdomEstimationClass::addImuPreintegration(std::vector<double> dt_arr, std::
     lidar_odom_arr.push_back(Eigen::Isometry3d::Identity());
 }
 
-void OdomEstimationClass::addLidarFeature(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr edge_in, const pcl::PointCloud<pcl::PointXYZRGB>::Ptr surf_in){
-    pcl::PointCloud<pcl::PointXYZRGB>::Ptr downsized_edge = pcl::PointCloud<pcl::PointXYZRGB>::Ptr(new pcl::PointCloud<pcl::PointXYZRGB>());
-    pcl::PointCloud<pcl::PointXYZRGB>::Ptr downsized_surf = pcl::PointCloud<pcl::PointXYZRGB>::Ptr(new pcl::PointCloud<pcl::PointXYZRGB>());
+void OdomEstimationClass::addLidarFeature(const pcl::PointCloud<pcl::PointXYZRGBL>::Ptr edge_in, const pcl::PointCloud<pcl::PointXYZRGBL>::Ptr surf_in){
 
-//    edge_downsize_filter.setInputCloud(edge_in);
-//    edge_downsize_filter.filter(*downsized_edge);
-    downsized_edge=edge_in;
-//    surf_downsize_filter.setInputCloud(surf_in);
-//    surf_downsize_filter.filter(*downsized_surf);
-    downsized_surf=surf_in;
 
     Eigen::Isometry3f T_bl = common_param.getTbl().cast<float>();
-    pcl::transformPointCloud(*downsized_edge, *current_edge_points, T_bl);   
-    pcl::transformPointCloud(*downsized_surf, *current_surf_points, T_bl);    
+    current_plane_num = static_cast<int>(surf_in->at(0).x);
+    std::vector<int> indexs;
+    for(auto i = 1;i<current_plane_num+1;i++){
+        indexs.push_back(i);
+    }
+    pcl::copyPointCloud(*surf_in, indexs, *current_plane_info_cloud);
+    // debug
+    std::cout << "the plane num is "<<current_plane_num<<std::endl;
+    for (int i = 0; i <current_plane_num ; ++i) {
+        std::cout<<"The "<<i+1<<"th plane has "<< current_plane_info_cloud->at(i).rgb<<"points."<<std::endl;
+    }
+    surf_in->erase(surf_in->begin(),surf_in->begin()+current_plane_num+1);
+    std::cout << "the plane points num is "<<surf_in->size()<<std::endl;
+    pcl::transformPointCloud(*edge_in, *current_edge_points, T_bl);
+    pcl::transformPointCloud(*surf_in, *current_surf_points, T_bl);
 
 }
-
 void OdomEstimationClass::addEdgeCost(ceres::Problem& problem, ceres::LossFunction *loss_function, double* pose){
     int edge_num=0;
     Eigen::Isometry3d T_wb = Eigen::Isometry3d::Identity();
     T_wb.linear() = Utils::so3ToR(Eigen::Vector3d(pose[0],pose[1],pose[2]));
     T_wb.translation() = Eigen::Vector3d(pose[3],pose[4],pose[5]);
-    pcl::PointCloud<pcl::PointXYZRGB>::Ptr transformed_edge = pcl::PointCloud<pcl::PointXYZRGB>::Ptr(new pcl::PointCloud<pcl::PointXYZRGB>());
+    pcl::PointCloud<pcl::PointXYZRGBL>::Ptr transformed_edge = pcl::PointCloud<pcl::PointXYZRGBL>::Ptr(new pcl::PointCloud<pcl::PointXYZRGBL>());
     pcl::transformPointCloud(*current_edge_points, *transformed_edge, T_wb.cast<float>());
     for (int i = 0; i < (int)transformed_edge->points.size(); i++){
         std::vector<int> pointSearchInd;
@@ -176,7 +182,7 @@ void OdomEstimationClass::addEdgeCost(ceres::Problem& problem, ceres::LossFuncti
             }                           
         }
     }
-//    cout<<"edge_num = "<< edge_num <<endl;
+    // std::cout<<"correct edge points: "<<edge_num<<endl;
     if(edge_num<20){
         std::cout<<"not enough correct edge points"<<std::endl;
     }
@@ -187,7 +193,7 @@ void OdomEstimationClass::addSurfCost(ceres::Problem& problem, ceres::LossFuncti
     Eigen::Isometry3d T_wb = Eigen::Isometry3d::Identity();
     T_wb.linear() = Utils::so3ToR(Eigen::Vector3d(pose[0],pose[1],pose[2]));
     T_wb.translation() = Eigen::Vector3d(pose[3],pose[4],pose[5]);
-    pcl::PointCloud<pcl::PointXYZRGB>::Ptr transformed_surf = pcl::PointCloud<pcl::PointXYZRGB>::Ptr(new pcl::PointCloud<pcl::PointXYZRGB>());
+    pcl::PointCloud<pcl::PointXYZRGBL>::Ptr transformed_surf = pcl::PointCloud<pcl::PointXYZRGBL>::Ptr(new pcl::PointCloud<pcl::PointXYZRGBL>());
     pcl::transformPointCloud(*current_surf_points, *transformed_surf, T_wb.cast<float>());
     
     for (int i = 0; i < (int) transformed_surf->points.size(); i++){
@@ -230,7 +236,7 @@ void OdomEstimationClass::addSurfCost(ceres::Problem& problem, ceres::LossFuncti
         }
 
     }
-//    cout<<"surf_num = "<< surf_num <<endl;
+    // std::cout<<"correct surf points: "<<surf_num<<endl;
     if(surf_num<20){
         std::cout<<"not enough correct surf points"<<std::endl;
     }
@@ -293,8 +299,6 @@ void OdomEstimationClass::optimize(void){
             addImuCost(imu_preintegrator_arr[i], problem, loss_function, pose[pose_id], pose[pose_id+1]);
         }
 
-
-        auto  a = pose[pose_size-1];
         addEdgeCost(problem, loss_function, pose[pose_size-1]);
         addSurfCost(problem, loss_function, pose[pose_size-1]);
 
@@ -352,9 +356,9 @@ void OdomEstimationClass::optimize(void){
 }
 
 void OdomEstimationClass::updateLocalMap(Eigen::Isometry3d& transform){
-    pcl::PointCloud<pcl::PointXYZRGB>::Ptr transformed_edge = pcl::PointCloud<pcl::PointXYZRGB>::Ptr(new pcl::PointCloud<pcl::PointXYZRGB>());
+    pcl::PointCloud<pcl::PointXYZRGBL>::Ptr transformed_edge = pcl::PointCloud<pcl::PointXYZRGBL>::Ptr(new pcl::PointCloud<pcl::PointXYZRGBL>());
     pcl::transformPointCloud(*current_edge_points, *transformed_edge, transform.cast<float>());
-    pcl::PointCloud<pcl::PointXYZRGB>::Ptr transformed_surf = pcl::PointCloud<pcl::PointXYZRGB>::Ptr(new pcl::PointCloud<pcl::PointXYZRGB>());
+    pcl::PointCloud<pcl::PointXYZRGBL>::Ptr transformed_surf = pcl::PointCloud<pcl::PointXYZRGBL>::Ptr(new pcl::PointCloud<pcl::PointXYZRGBL>());
     pcl::transformPointCloud(*current_surf_points, *transformed_surf, transform.cast<float>());
     
     *edge_map += *transformed_edge;
@@ -367,13 +371,13 @@ void OdomEstimationClass::updateLocalMap(Eigen::Isometry3d& transform){
     double y_max = transform.translation().y() + lidar_param.getLocalMapSize();
     double z_max = transform.translation().z() + lidar_param.getLocalMapSize();
     
-    pcl::CropBox<pcl::PointXYZRGB> crop_box_filter;
+    pcl::CropBox<pcl::PointXYZRGBL> crop_box_filter;
     crop_box_filter.setMin(Eigen::Vector4f(x_min, y_min, z_min, 1.0));
     crop_box_filter.setMax(Eigen::Vector4f(x_max, y_max, z_max, 1.0));
     crop_box_filter.setNegative(false);    
 
-    pcl::PointCloud<pcl::PointXYZRGB>::Ptr edge_map_temp(new pcl::PointCloud<pcl::PointXYZRGB>());
-    pcl::PointCloud<pcl::PointXYZRGB>::Ptr surf_map_temp(new pcl::PointCloud<pcl::PointXYZRGB>());
+    pcl::PointCloud<pcl::PointXYZRGBL>::Ptr edge_map_temp(new pcl::PointCloud<pcl::PointXYZRGBL>());
+    pcl::PointCloud<pcl::PointXYZRGBL>::Ptr surf_map_temp(new pcl::PointCloud<pcl::PointXYZRGBL>());
     crop_box_filter.setInputCloud(edge_map);
     crop_box_filter.filter(*edge_map_temp);
     crop_box_filter.setInputCloud(surf_map);
