@@ -126,12 +126,12 @@ void OdomEstimationClass::addLidarFeature(const pcl::PointCloud<pcl::PointXYZRGB
     }
     pcl::copyPointCloud(*surf_in, indexs, *current_plane_info_cloud);
     // debug
-    std::cout << "the plane num is "<<current_plane_num<<std::endl;
-    for (int i = 0; i <current_plane_num ; ++i) {
-        std::cout<<"The "<<i+1<<"th plane has "<< current_plane_info_cloud->at(i).rgb<<"points."<<std::endl;
-    }
+//    std::cout << "the plane num is "<<current_plane_num<<std::endl;
+//    for (int i = 0; i <current_plane_num ; ++i) {
+//        std::cout<<"The "<<i+1<<"th plane has "<< current_plane_info_cloud->at(i).rgb<<"points."<<std::endl;
+//    }
     surf_in->erase(surf_in->begin(),surf_in->begin()+current_plane_num+1);
-    std::cout << "the plane points num is "<<surf_in->size()<<std::endl;
+//    std::cout << "the plane points num is "<<surf_in->size()<<std::endl;
     pcl::transformPointCloud(*edge_in, *current_edge_points, T_bl);
     pcl::transformPointCloud(*surf_in, *current_surf_points, T_bl);
 
@@ -229,7 +229,7 @@ void OdomEstimationClass::addSurfCost(ceres::Problem& problem, ceres::LossFuncti
             Eigen::Vector3d curr_point(current_surf_points->points[i].x, current_surf_points->points[i].y, current_surf_points->points[i].z);
             if (planeValid)
             {
-                ceres::CostFunction *cost_function = new LidarSurfFactor(curr_point, norm, negative_OA_dot_norm, lidar_param.getSurfN());    
+                ceres::CostFunction *cost_function = new LidarSurfFactor(curr_point, norm, negative_OA_dot_norm, lidar_param.getSurfN());
                 problem.AddResidualBlock(cost_function, loss_function, pose);
                 surf_num++;
             }
