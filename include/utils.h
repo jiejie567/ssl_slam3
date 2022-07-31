@@ -21,6 +21,7 @@ public:
 	static Eigen::Vector3d gravity;
 //mathematics
 public:
+
 	static Eigen::Matrix3d skew(const Eigen::Vector3d &v);
 	static Eigen::Vector3d RToso3(const Eigen::Matrix3d& R);
 	static Eigen::Quaterniond RToq(const Eigen::Matrix3d& R);

@@ -31,16 +31,16 @@ public:
 	double sqrt_info;
 };
 
-class LidarSurfFactor : public ceres::SizedCostFunction<1, 15> {
+class LidarPlaneFactor : public ceres::SizedCostFunction<3, 15> {
 public:
-	LidarSurfFactor(Eigen::Vector3d curr_point_in, Eigen::Vector3d plane_unit_norm_in, double negative_OA_dot_norm_in, double covariance_in);
-	virtual ~LidarSurfFactor() {}
-	virtual bool Evaluate(double const *const *parameters, double *residuals, double **jacobians) const;
+    LidarPlaneFactor(Eigen::Vector4d current_plane_hessian, Eigen::Vector4d traget_plane_hessian, int quantity_plane_matched, double covariance_in);
+    virtual ~LidarPlaneFactor() {}
+    virtual bool Evaluate(double const *const *parameters, double *residuals, double **jacobians) const;
 
-	Eigen::Vector3d curr_point;
-	Eigen::Vector3d plane_unit_norm;
-	double negative_OA_dot_norm;
-	double sqrt_info;
+    Eigen::Vector4d current_plane_hessian_;
+    Eigen::Vector4d target_plane_hessian_;
+    double sqrt_info;
+    int quantity_plane_matched_;
 };
 
 

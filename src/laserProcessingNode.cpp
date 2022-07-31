@@ -132,7 +132,7 @@ int main(int argc, char **argv)
     pubEdgePoints = nh.advertise<sensor_msgs::PointCloud2>("/laser_cloud_edge", 100);
     pubSurfPoints = nh.advertise<sensor_msgs::PointCloud2>("/laser_cloud_surf", 100);
 
-    ros::Rate loop_rate(10);
+    ros::Rate loop_rate(40);
     while (ros::ok())
     {
         ros::spinOnce();

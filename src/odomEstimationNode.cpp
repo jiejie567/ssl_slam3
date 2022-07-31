@@ -211,7 +211,6 @@ void odom_estimation(){
         fusionOdometry.pose.pose.position.y = t_current.y();
         fusionOdometry.pose.pose.position.z = t_current.z();
         pub_odom.publish(fusionOdometry);
-
     }
 }
 

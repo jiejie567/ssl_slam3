@@ -11,6 +11,14 @@ Eigen::Matrix3d Utils::skew(const Eigen::Vector3d &v) {
     return w;
 }
 
+//template<typename T>
+//Eigen::Matrix<T,3,3> Utils::skew(const Eigen::Matrix<T,3,1> &v) {
+//    Eigen::Matrix<T, 3, 3> w;
+//    w << 0., -v(2), v(1),
+//            v(2), 0., -v(0),
+//            -v(1), v(0), 0.;
+//    return w;
+//}
 Eigen::Matrix3d Utils::normalizeR(const Eigen::Matrix3d& R) {
     Eigen::Quaterniond q(R);
     q.normalize();
@@ -39,12 +47,35 @@ Eigen::Matrix3d Utils::so3ToR(const Eigen::Vector3d& so3) {
     double theta = so3.norm();
     if(theta<THETA_THRESHOLD){
         Eigen::Matrix3d u_x = skew(so3);
-        return Eigen::Matrix3d::Identity() + u_x + 0.5 * u_x * u_x; 
+        return Eigen::Matrix3d::Identity() + u_x + 0.5 * u_x * u_x;
     }else{
         Eigen::Matrix3d u_x = skew(so3.normalized());
         return Eigen::Matrix3d::Identity() + sin(theta)*u_x + (1 - cos(theta))*u_x*u_x;
     }
 }
+
+//template<typename T>
+//Eigen::Matrix<T,3,3> Utils::so3ToR(const Eigen::Matrix<T,3,1>& so3) {
+//    T theta = so3.norm();
+//    if(theta<THETA_THRESHOLD){
+//    Eigen::Matrix<T, 3, 3> w;
+//    w << 0., -so3(2), so3(1),
+//            so3(2), 0., -so3(0),
+//            -so3(1), so3(0), 0.;
+//        Eigen::Matrix<T,3,3> u_x;
+//        u_x << 0., -so3(2), so3(1),
+//                so3(2), 0., -so3(0),
+//                -so3(1), so3(0), 0.;
+//        return Eigen::Matrix<T,3,3>::Identity() + u_x + 0.5 * u_x * u_x;
+//    }else{
+//        Eigen::Matrix<T,3,3> u_x;
+//        u_x << 0., -so3.normalized(2), so3.normalized(1),
+//                so3.normalized(2), 0., -so3.normalized(0),
+//                -so3.normalized(1), so3.normalized(0), 0.;
+//        return Eigen::Matrix<T,3,3>::Identity() + sin(theta)*u_x + (1 - cos(theta))*u_x*u_x;
+//    }
+//}
+
 
 Eigen::Quaterniond Utils::so3Toq(const Eigen::Vector3d& so3) {
     double theta = so3.norm();

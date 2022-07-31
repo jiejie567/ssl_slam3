@@ -4,6 +4,7 @@
 
 #ifndef _ODOM_ESTIMATION_CLASS_H_
 #define _ODOM_ESTIMATION_CLASS_H_
+#include <algorithm>
 
 #include <Eigen/Dense>
 #include <Eigen/Geometry>
@@ -62,8 +63,10 @@ class OdomEstimationClass{
 		pcl::PointCloud<pcl::PointXYZRGBL>::Ptr surf_map;
 		pcl::PointCloud<pcl::PointXYZRGBL>::Ptr current_edge_points;
 		pcl::PointCloud<pcl::PointXYZRGBL>::Ptr current_surf_points;
-        pcl::PointCloud<pcl::PointXYZRGBL>::Ptr current_plane_info_cloud;
 		int current_plane_num;
+		std::vector<Eigen::Vector4d> *pv_plane_info;
+        std::vector<Eigen::Vector4d> v_current_plane_info;
+        std::vector<int> v_current_plane_points_num;
 
 		// kdtree for fast indexing
 		pcl::KdTreeFLANN<pcl::PointXYZRGBL> edge_kd_tree;

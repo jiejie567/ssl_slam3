@@ -68,7 +68,6 @@ bool LidarEdgeFactor::Evaluate(double const *const *parameters, double *residual
     Eigen::Vector3d nu = (lp - last_point_a).cross(lp - last_point_b);
     Eigen::Vector3d de = last_point_a - last_point_b;
     residuals[0] = sqrt_info * nu.norm() / de.norm();
-    
     if(jacobians != NULL){
         if(jacobians[0] != NULL){
             Eigen::Matrix<double, 3, 15> dp_by_so3xyz = Eigen::Matrix<double, 3, 15>::Zero();
@@ -78,34 +77,38 @@ bool LidarEdgeFactor::Evaluate(double const *const *parameters, double *residual
             jacobian_i.setZero();
             jacobian_i = - sqrt_info * nu.transpose() / nu.norm() * Utils::skew(de) * dp_by_so3xyz / de.norm();
         }
-    }  
-
+    }
     return true;
-}   
-
-LidarSurfFactor::LidarSurfFactor(Eigen::Vector3d curr_point_in, Eigen::Vector3d plane_unit_norm_in, double negative_OA_dot_norm_in, double covariance_in){
-    curr_point = curr_point_in;
-    plane_unit_norm = plane_unit_norm_in;
-    negative_OA_dot_norm = negative_OA_dot_norm_in;
-    sqrt_info = 1.0 / covariance_in;
 }
 
-bool LidarSurfFactor::Evaluate(double const *const *parameters, double *residuals, double **jacobians) const {
+LidarPlaneFactor::LidarPlaneFactor(Eigen::Vector4d current_plane_hessian, Eigen::Vector4d traget_plane_hessian, int quantity_plane_matched, double covariance_in){
+    current_plane_hessian_ = current_plane_hessian;
+    target_plane_hessian_ =traget_plane_hessian;
+    quantity_plane_matched_ = quantity_plane_matched;
+    sqrt_info = covariance_in;
+}
+
+bool LidarPlaneFactor::Evaluate(double const *const *parameters, double *residuals, double **jacobians) const {
     Eigen::Vector3d ri(parameters[0][0], parameters[0][1], parameters[0][2]);
     Eigen::Vector3d Pi(parameters[0][3], parameters[0][4], parameters[0][5]);
     Eigen::Matrix3d Ri = Utils::so3ToR(ri);
-    Eigen::Vector3d lp = Ri * curr_point + Pi;
-    residuals[0] = sqrt_info * (plane_unit_norm.dot(lp) + negative_OA_dot_norm);
-
-    if(jacobians != NULL){
-        if(jacobians[0] != NULL){
-            Eigen::Matrix<double, 3, 15> dp_by_so3xyz = Eigen::Matrix<double, 3, 15>::Zero();
-            dp_by_so3xyz.block<3,3>(0, 0) = - Ri * Utils::skew(curr_point);
-            dp_by_so3xyz.block<3,3>(0, 3) = Eigen::Matrix3d::Identity();
-            Eigen::Map<Eigen::Matrix<double, 1, 15, Eigen::RowMajor> > jacobian_i(jacobians[0]);
+    Eigen::Vector3d plane_n = current_plane_hessian_.head(3);
+    double plane_d= current_plane_hessian_[3];
+    Eigen::Vector3d plane_n_transed = Ri*plane_n;
+    auto pi_transepose = Pi.transpose();
+    double plane_d_transed = -pi_transepose*plane_n_transed+plane_d;
+    Eigen::Vector3d current_plane_closest_point = plane_n_transed*plane_d_transed;
+    Eigen::Vector3d target_plane_closest_point = target_plane_hessian_.head(3)*target_plane_hessian_[3];
+    Eigen::Map<Eigen::Matrix<double, 3, 1> > residuals_i(residuals);
+    residuals_i =  sqrt_info*quantity_plane_matched_*(current_plane_closest_point-target_plane_closest_point);
+    if (jacobians != nullptr && jacobians[0] != nullptr) {
+            Eigen::Map<Eigen::Matrix<double, 3, 15, Eigen::RowMajor> > jacobian_i(jacobians[0]);
             jacobian_i.setZero();
-            jacobian_i = sqrt_info * plane_unit_norm.transpose() * dp_by_so3xyz;
-        }
+            jacobian_i.block<3,3>(0, 0) = sqrt_info*quantity_plane_matched_*
+             ((pi_transepose * plane_n_transed-plane_d) * Eigen::Matrix3d::Identity(3,3) +
+                                                   plane_n_transed * pi_transepose) *Ri* Utils::skew(plane_n);
+            jacobian_i.block<3,3>(0, 3) = (-1)*sqrt_info*quantity_plane_matched_*
+              plane_n_transed*plane_n_transed.transpose();
     }
     return true;
-}   
+}

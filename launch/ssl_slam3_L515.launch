@@ -5,9 +5,8 @@
     <node pkg="tf" type="static_transform_publisher" name="base2imu_tf"  args="0 0 0 0 0 0 /odom /camera_depth_optical_frame 100" />
 
     <include file="$(find ssl_slam3)/launch/rs_camera.launch">
-        <arg name="filters" value="pointcloud" />    
     </include>
-    
+
     <param name="file_path" value="$(find ssl_slam3)/config/params.yaml"/>
 
     <node pkg="ssl_slam3" type="ssl_slam3_laser_processing_node" name="ssl_slam3_laser_processing_node" output="screen" />

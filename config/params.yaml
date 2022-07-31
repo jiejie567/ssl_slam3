@@ -1,7 +1,7 @@
 %YAML:1.0
 
 common:
-    core_num: 4
+    core_num: 8
     init_frame: 10
     nearby_frame: 6
 
@@ -33,7 +33,7 @@ lidar:
     surf_n: 1.0e-2
 
     # mapping thread
-    map_resolution: 0.01
+    map_resolution: 0.02
     map_cell_width: 20.0
     map_cell_height: 20.0
     map_cell_depth: 20.0
@@ -45,7 +45,7 @@ imu:
     # note that we follow the value unit from kalibr  link:https://github.com/ethz-asl/kalibr/wiki/IMU-Noise-Model
     # if you use imu_utils, the result is in discrete time, you can simply set frequency to 1
     frequency: 200
-    acc_n: 1.176e-2   # 1.176e-2m/s^2 * 1/sqrt(Hz) continuous time
+    acc_n: 5.176e-1   # 1.176e-2m/s^2 * 1/sqrt(Hz) continuous time
     gyr_n: 2.443e-3   # 2.443e-3rad/s * 1/sqrt(Hz) continuous time
     acc_w: 1.0e-3   # m/s^3 * 1/sqrt(Hz) continuous time
     gyr_w: 1.0e-4   # rad/s^2 * 1/sqrt(Hz) continuous time

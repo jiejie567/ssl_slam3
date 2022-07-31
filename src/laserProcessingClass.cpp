@@ -54,7 +54,7 @@ void LaserProcessingClass::featureExtraction(cv::Mat& color_im, cv::Mat& depth_i
         }
     }
     PlaneFitter pf;
-    pf.minSupport = 600;
+    pf.minSupport = 300;
     pf.windowWidth = 12;
     pf.windowHeight = 12;
     pf.doRefine = true;
@@ -72,7 +72,6 @@ void LaserProcessingClass::featureExtraction(cv::Mat& color_im, cv::Mat& depth_i
     plane_num_cloud->push_back(plane_num);
     pcl::PointCloud<pcl::PointXYZRGBL>::Ptr plane_info_cloud(new pcl::PointCloud<pcl::PointXYZRGBL>);
     for(auto idx_plane = 0; idx_plane<vSeg.size();idx_plane++) {
-        num_of_plane++;
         pcl::PointCloud<pcl::PointXYZRGBL>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGBL>);
         for (auto idx_idx = 0; idx_idx < vSeg[idx_plane].size(); idx_idx++) {
             pcl::PointXYZRGBL pt;
@@ -90,7 +89,7 @@ void LaserProcessingClass::featureExtraction(cv::Mat& color_im, cv::Mat& depth_i
             pt.label = num_of_plane;
             cloud->push_back(pt);
         }
-
+        num_of_plane++;
         pcl::VoxelGrid<pcl::PointXYZRGBL> sor;
         sor.setInputCloud(cloud);
         sor.setLeafSize(0.1f, 0.1f, 0.1f);
@@ -111,8 +110,11 @@ void LaserProcessingClass::featureExtraction(cv::Mat& color_im, cv::Mat& depth_i
         //----------------------------输出模型参数---------------------------
         Eigen::VectorXf coefficient;
         ransac.getModelCoefficients(coefficient);
-//        cout << "平面方程为：\n" << coefficient[0] << "x + " << coefficient[1] << "y + " << coefficient[2] << "z + "
-//             << coefficient[3] << " = 0" << endl;
+        if(coefficient[3]<0)
+        {
+            coefficient = -coefficient;
+        }
+
         pcl::PointXYZRGBL plane_info;
         plane_info.x = coefficient[0];
         plane_info.y = coefficient[1];
