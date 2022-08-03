@@ -8,7 +8,7 @@ void LaserProcessingClass::init(std::string& file_path){
     double map_resolution = lidar_param.getLocalMapResolution();
 //    edge_downsize_filter.setLeafSize(map_resolution/4.0, map_resolution/4.0, map_resolution/4.0);
 //    surf_downsize_filter.setLeafSize(map_resolution/2.0, map_resolution/2.0, map_resolution/2.0);
-    edge_downsize_filter.setLeafSize(0.001, 0.001, 0.001);
+    edge_downsize_filter.setLeafSize(0.01, 0.01, 0.01);
     surf_downsize_filter.setLeafSize(0.1, 0.1, 0.1);
     
     edge_noise_filter.setRadiusSearch(map_resolution);

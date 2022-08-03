@@ -269,7 +269,7 @@ void OdomEstimationClass::addSurfCost(ceres::Problem& problem, ceres::LossFuncti
             pt_idx++;
         }
         if(m_plane_match.empty()){
-            cout<<"can't find match plane!"<<endl;
+            // cout<<"can't find match plane!"<<endl;
             continue;
         }
         std::vector<std::pair<int,int>> v_pair_plane_matched(m_plane_match.begin(),m_plane_match.end());//pair fist is the idx of the plane idx in the kd tree, second is the matching count.
@@ -280,7 +280,7 @@ void OdomEstimationClass::addSurfCost(ceres::Problem& problem, ceres::LossFuncti
         auto two_normal_dot = (Utils::so3ToR(ri)*v_current_plane_info[i].head(3)).dot(pv_plane_info->at(v_pair_plane_matched[0].first).head(3));
         if(two_normal_dot<cos(30.*3.14/180.))
         {
-            cout<<"remove plane outlier"<<endl;
+            // cout<<"remove plane outlier"<<endl;
             continue;
         }
         ceres::CostFunction *cost_function = new LidarPlaneFactor(v_current_plane_info[i],pv_plane_info->at(v_pair_plane_matched[0].first), v_pair_plane_matched[0].second, lidar_param.getSurfN());
