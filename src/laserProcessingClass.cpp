@@ -97,7 +97,7 @@ void LaserProcessingClass::featureExtraction(cv::Mat& color_im, cv::Mat& depth_i
         pcl::SampleConsensusModelPlane<pcl::PointXYZRGBL>::Ptr model_plane(
                 new pcl::SampleConsensusModelPlane<pcl::PointXYZRGBL>(cloud));
         pcl::RandomSampleConsensus<pcl::PointXYZRGBL> ransac(model_plane);
-        ransac.setDistanceThreshold(0.01);    //设置距离阈值，与平面距离小于0.1的点作为内点
+        ransac.setDistanceThreshold(0.005);    //设置距离阈值，与平面距离小于0.1的点作为内点
         ransac.computeModel();                //执行模型估计
         //-------------------------根据索引提取内点--------------------------
         pcl::PointCloud<pcl::PointXYZRGBL>::Ptr cloud_plane(new pcl::PointCloud<pcl::PointXYZRGBL>);
