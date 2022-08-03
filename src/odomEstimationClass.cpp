@@ -48,6 +48,7 @@ void OdomEstimationClass::init(std::string& file_path){
 }
 
 void OdomEstimationClass::initMapWithPoints(const pcl::PointCloud<pcl::PointXYZRGBL>::Ptr edge_in, const pcl::PointCloud<pcl::PointXYZRGBL>::Ptr surf_in){
+    last_pose = Eigen::Isometry3d::Identity();
     *edge_map += *edge_in;
     *surf_map += *surf_in;
     edge_kd_tree.setInputCloud(edge_map);
@@ -397,7 +398,8 @@ void OdomEstimationClass::optimize(void){
         lidar_odom_arr[i].linear() = last_R.transpose() * Utils::so3ToR(pose_r_arr[i+1]);
         lidar_odom_arr[i].translation() = last_R.transpose() * (pose_t_arr[i+1] - pose_t_arr[i]);
     }
-    // update map
+    current_pose = lidar_odom_arr[end_id];
+            // update map
     Eigen::Isometry3d current_pose = Eigen::Isometry3d::Identity();
     current_pose.linear() = Utils::so3ToR(pose_r_arr.back());
     current_pose.translation() = pose_t_arr.back();
@@ -424,8 +426,17 @@ void OdomEstimationClass::updateLocalMap(Eigen::Isometry3d& transform){
             v_current_line_point_info.begin(),v_current_line_point_info.end());
     pv_line_direction_info->insert(pv_line_direction_info->end(),
             v_current_line_direction_info.begin(),v_current_line_direction_info.end());
-    *edge_map += *transformed_edge;
-    *surf_map += *transformed_surf;
+
+    Eigen::Isometry3d delta_transform = last_pose.inverse() * current_pose;
+    double displacement = delta_transform.translation().squaredNorm();
+    Eigen::Quaterniond q_temp(delta_transform.linear());
+    double angular_change = 2 * acos(q_temp.w());
+
+    if(displacement>0.2 || angular_change>15 / 180.0 * M_PI) {
+        last_pose = current_pose;
+        *edge_map += *transformed_edge;
+        *surf_map += *transformed_surf;
+    }
 
     double x_min = transform.translation().x() - lidar_param.getLocalMapSize();
     double y_min = transform.translation().y() - lidar_param.getLocalMapSize();

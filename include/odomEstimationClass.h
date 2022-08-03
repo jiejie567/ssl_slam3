@@ -84,7 +84,13 @@ class OdomEstimationClass{
 		pcl::KdTreeFLANN<pcl::PointXYZRGBL> edge_kd_tree;
 		pcl::KdTreeFLANN<pcl::PointXYZRGBL> surf_kd_tree;
 
-		// points downsampling before add to map
+		//pose
+        Eigen::Isometry3d last_pose;
+        Eigen::Isometry3d current_pose;
+
+
+
+    // points downsampling before add to map
 		pcl::VoxelGrid<pcl::PointXYZRGBL> edge_downsize_filter;
 		pcl::VoxelGrid<pcl::PointXYZRGBL> surf_downsize_filter;
 		
