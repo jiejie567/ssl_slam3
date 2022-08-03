@@ -57,6 +57,7 @@ class LaserProcessingClass {
      	pcl::RadiusOutlierRemoval<pcl::PointXYZRGBL> edge_noise_filter;
      	pcl::RadiusOutlierRemoval<pcl::PointXYZRGBL> surf_noise_filter;
         uint32_t num_of_plane;
+        uint32_t num_of_line;
 };
 
 #endif // _LASER_PROCESSING_CLASS_H_

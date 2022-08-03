@@ -81,11 +81,47 @@ bool LidarEdgeFactor::Evaluate(double const *const *parameters, double *residual
     return true;
 }
 
+LidarLineFactor::LidarLineFactor(Eigen::Vector4d end_point1, Eigen::Vector4d end_point2,
+                Eigen::Vector4d target_line_point,Eigen::Vector4d target_direction,
+                int quantity_line_matched, double covariance_in){
+    end_point1_ = end_point1.head(3);
+    end_point2_ = end_point2.head(3);
+    target_line_point_ = target_line_point.head(3);
+    target_direction_ = target_direction.head(3);
+    quantity_line_matched_ = quantity_line_matched;
+    sqrt_info = 1.0 /covariance_in;
+};
+bool LidarLineFactor::Evaluate(const double *const *parameters, double *residuals, double **jacobians) const {
+    Eigen::Vector3d ri(parameters[0][0], parameters[0][1], parameters[0][2]);
+    Eigen::Vector3d Pi(parameters[0][3], parameters[0][4], parameters[0][5]);
+    Eigen::Matrix3d Ri = Utils::so3ToR(ri);
+    Eigen::Vector3d vector_distance1= Ri*end_point1_+Pi-target_line_point_;
+    Eigen::Vector3d vector_distance2= Ri*end_point2_+Pi-target_line_point_;
+
+    residuals[0] = sqrt_info*quantity_line_matched_*(
+                (vector_distance1.cross(target_direction_).norm())+
+                (vector_distance2.cross(target_direction_).norm()));
+    if (jacobians != nullptr && jacobians[0] != nullptr) {
+        Eigen::Map<Eigen::Matrix<double, 1, 15, Eigen::RowMajor> > jacobian_i(jacobians[0]);
+        jacobian_i.setZero();
+        Eigen::Vector3d res1 = Utils::skew(target_direction_)*(target_line_point_-Ri*end_point1_-Pi);
+        Eigen::Vector3d res2 = Utils::skew(target_direction_)*(target_line_point_-Ri*end_point2_-Pi);
+
+        jacobian_i.block<1,3>(0, 0) = sqrt_info*quantity_line_matched_*(res1.transpose()/res1.norm()*Utils::skew(target_direction_)*
+                                Ri*Utils::skew(end_point1_)+res2.transpose()/res2.norm()*Utils::skew(target_direction_)*
+                                Ri*Utils::skew(end_point2_));
+        jacobian_i.block<1,3>(0, 3) = (-1)*sqrt_info*quantity_line_matched_*
+                (res1.transpose()/res1.norm()*Utils::skew(target_direction_)*Eigen::Matrix3d::Identity(3,3)+
+                        res2.transpose()/res2.norm()*Utils::skew(target_direction_)*Eigen::Matrix3d::Identity(3,3));
+    }
+    return true;
+}
+
 LidarPlaneFactor::LidarPlaneFactor(Eigen::Vector4d current_plane_hessian, Eigen::Vector4d traget_plane_hessian, int quantity_plane_matched, double covariance_in){
     current_plane_hessian_ = current_plane_hessian;
     target_plane_hessian_ =traget_plane_hessian;
     quantity_plane_matched_ = quantity_plane_matched;
-    sqrt_info = covariance_in;
+    sqrt_info = 1.0 /covariance_in;
 }
 
 bool LidarPlaneFactor::Evaluate(double const *const *parameters, double *residuals, double **jacobians) const {

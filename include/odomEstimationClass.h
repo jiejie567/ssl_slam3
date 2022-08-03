@@ -63,10 +63,22 @@ class OdomEstimationClass{
 		pcl::PointCloud<pcl::PointXYZRGBL>::Ptr surf_map;
 		pcl::PointCloud<pcl::PointXYZRGBL>::Ptr current_edge_points;
 		pcl::PointCloud<pcl::PointXYZRGBL>::Ptr current_surf_points;
-		int current_plane_num;
+
+
+        //plane
+        int current_plane_num;
 		std::vector<Eigen::Vector4d> *pv_plane_info;
         std::vector<Eigen::Vector4d> v_current_plane_info;
         std::vector<int> v_current_plane_points_num;
+        //line
+        int current_line_num;
+        std::vector<Eigen::Vector4d> *pv_line_point_info;
+        std::vector<Eigen::Vector4d> *pv_line_direction_info;
+        std::vector<Eigen::Vector4d> v_current_line_point_info;
+        std::vector<Eigen::Vector4d> v_current_line_direction_info;
+        std::vector<Eigen::Vector4d> v_current_line_endpoint1;
+        std::vector<Eigen::Vector4d> v_current_line_endpoint2;
+        std::vector<int> v_current_line_points_num;
 
 		// kdtree for fast indexing
 		pcl::KdTreeFLANN<pcl::PointXYZRGBL> edge_kd_tree;
