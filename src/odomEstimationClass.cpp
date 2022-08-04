@@ -408,10 +408,7 @@ void OdomEstimationClass::optimize(void){
 
 
 void OdomEstimationClass::updateLocalMap(Eigen::Isometry3d& transform){
-    pcl::PointCloud<pcl::PointXYZRGBL>::Ptr transformed_edge = pcl::PointCloud<pcl::PointXYZRGBL>::Ptr(new pcl::PointCloud<pcl::PointXYZRGBL>());
-    pcl::transformPointCloud(*current_edge_points, *transformed_edge, transform.cast<float>());
-    pcl::PointCloud<pcl::PointXYZRGBL>::Ptr transformed_surf = pcl::PointCloud<pcl::PointXYZRGBL>::Ptr(new pcl::PointCloud<pcl::PointXYZRGBL>());
-    pcl::transformPointCloud(*current_surf_points, *transformed_surf, transform.cast<float>());
+
     for (auto &plane_info:v_current_plane_info){
         plane_info = transform.matrix().transpose().inverse()*plane_info;
     }
@@ -431,39 +428,39 @@ void OdomEstimationClass::updateLocalMap(Eigen::Isometry3d& transform){
     double displacement = delta_transform.translation().squaredNorm();
     Eigen::Quaterniond q_temp(delta_transform.linear());
     double angular_change = 2 * acos(q_temp.w());
-
     if(displacement>0.2 || angular_change>15 / 180.0 * M_PI) {
+        double x_min = transform.translation().x() - lidar_param.getLocalMapSize();
+        double y_min = transform.translation().y() - lidar_param.getLocalMapSize();
+        double z_min = transform.translation().z() - lidar_param.getLocalMapSize();
+        double x_max = transform.translation().x() + lidar_param.getLocalMapSize();
+        double y_max = transform.translation().y() + lidar_param.getLocalMapSize();
+        double z_max = transform.translation().z() + lidar_param.getLocalMapSize();
+
+        pcl::CropBox<pcl::PointXYZRGBL> crop_box_filter;
+        crop_box_filter.setMin(Eigen::Vector4f(x_min, y_min, z_min, 1.0));
+        crop_box_filter.setMax(Eigen::Vector4f(x_max, y_max, z_max, 1.0));
+        crop_box_filter.setNegative(false);
+
+        pcl::PointCloud<pcl::PointXYZRGBL>::Ptr edge_map_temp(new pcl::PointCloud<pcl::PointXYZRGBL>());
+        pcl::PointCloud<pcl::PointXYZRGBL>::Ptr surf_map_temp(new pcl::PointCloud<pcl::PointXYZRGBL>());
+        crop_box_filter.setInputCloud(edge_map);
+        crop_box_filter.filter(*edge_map_temp);
+        crop_box_filter.setInputCloud(surf_map);
+        crop_box_filter.filter(*surf_map_temp);
+
+        pcl::PointCloud<pcl::PointXYZRGBL>::Ptr transformed_edge = pcl::PointCloud<pcl::PointXYZRGBL>::Ptr(new pcl::PointCloud<pcl::PointXYZRGBL>());
+        pcl::transformPointCloud(*current_edge_points, *transformed_edge, transform.cast<float>());
+        pcl::PointCloud<pcl::PointXYZRGBL>::Ptr transformed_surf = pcl::PointCloud<pcl::PointXYZRGBL>::Ptr(new pcl::PointCloud<pcl::PointXYZRGBL>());
+        pcl::transformPointCloud(*current_surf_points, *transformed_surf, transform.cast<float>());
+        edge_downsize_filter.setInputCloud(edge_map_temp);
+        edge_downsize_filter.filter(*edge_map);
+        surf_downsize_filter.setInputCloud(surf_map_temp);
+        surf_downsize_filter.filter(*surf_map);
         last_pose = current_pose;
         *edge_map += *transformed_edge;
         *surf_map += *transformed_surf;
+        edge_kd_tree.setInputCloud(edge_map);
+        surf_kd_tree.setInputCloud(surf_map);
     }
-
-    double x_min = transform.translation().x() - lidar_param.getLocalMapSize();
-    double y_min = transform.translation().y() - lidar_param.getLocalMapSize();
-    double z_min = transform.translation().z() - lidar_param.getLocalMapSize();
-    double x_max = transform.translation().x() + lidar_param.getLocalMapSize();
-    double y_max = transform.translation().y() + lidar_param.getLocalMapSize();
-    double z_max = transform.translation().z() + lidar_param.getLocalMapSize();
-    
-    pcl::CropBox<pcl::PointXYZRGBL> crop_box_filter;
-    crop_box_filter.setMin(Eigen::Vector4f(x_min, y_min, z_min, 1.0));
-    crop_box_filter.setMax(Eigen::Vector4f(x_max, y_max, z_max, 1.0));
-    crop_box_filter.setNegative(false);    
-
-    pcl::PointCloud<pcl::PointXYZRGBL>::Ptr edge_map_temp(new pcl::PointCloud<pcl::PointXYZRGBL>());
-    pcl::PointCloud<pcl::PointXYZRGBL>::Ptr surf_map_temp(new pcl::PointCloud<pcl::PointXYZRGBL>());
-    crop_box_filter.setInputCloud(edge_map);
-    crop_box_filter.filter(*edge_map_temp);
-    crop_box_filter.setInputCloud(surf_map);
-    crop_box_filter.filter(*surf_map_temp);
-
-
-    edge_downsize_filter.setInputCloud(edge_map_temp);
-    edge_downsize_filter.filter(*edge_map);    
-    surf_downsize_filter.setInputCloud(surf_map_temp);
-    surf_downsize_filter.filter(*surf_map);
-
-    edge_kd_tree.setInputCloud(edge_map);
-    surf_kd_tree.setInputCloud(surf_map);
 
 }
