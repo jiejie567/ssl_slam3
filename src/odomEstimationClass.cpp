@@ -207,7 +207,7 @@ void OdomEstimationClass::addEdgeCost(ceres::Problem& problem, ceres::LossFuncti
             std::vector<int> pointSearchInd;
             std::vector<float> pointSearchSqDis;
             edge_kd_tree.nearestKSearch(transformed_edge->points[pt_idx], 1, pointSearchInd, pointSearchSqDis);
-            if (pointSearchSqDis[0] < 0.01 ){
+            if (pointSearchSqDis[0] < 0.05 ){
                 m_line_match[edge_map->points[pointSearchInd[0]].label]++;
             }
             pt_idx++;
@@ -221,24 +221,21 @@ void OdomEstimationClass::addEdgeCost(ceres::Problem& problem, ceres::LossFuncti
                   [](std::pair<int,int> a, std::pair<int,int> b){return a.second > b.second;});
         Eigen::Vector3d ri(pose[0], pose[1], pose[2]);
         Eigen::Matrix3d Ri = Utils::so3ToR(ri);
-//        cout<<"v_current_line_points_num[i] "<<v_current_line_points_num[i]<<endl;
-//        cout<<"v_pair_line_matched[0].first "<<v_pair_line_matched[0].first<<endl;
-//        cout<<"v_pair_line_matched[0].second "<<v_pair_line_matched[0].second<<endl;
 
-//        cout<<"v_current_line_direction_info:"<<v_current_line_direction_info[i]<<endl;
         auto two_normal_dot = (Utils::so3ToR(ri)*v_current_line_direction_info[i].head(3)).dot(
                 pv_line_direction_info->at(v_pair_line_matched[0].first).head(3));
-        if(abs(two_normal_dot)<cos(30.*M_PI/180.))
+        if(abs(two_normal_dot)<cos(20.*M_PI/180.))
         {
 //            cout<<"remove line outlier"<<endl;
             continue;
         }
+        int weight = v_pair_line_matched[0].second;
         ceres::CostFunction *cost_function = new LidarLineFactor(
                 v_current_line_endpoint1[i],v_current_line_endpoint2[i],
                 pv_line_point_info->at(v_pair_line_matched[0].first),
-                pv_line_direction_info->at(v_pair_line_matched[0].first), v_pair_line_matched[0].second,
+                pv_line_direction_info->at(v_pair_line_matched[0].first), weight,
                 lidar_param.getEdgeN());
-        problem.AddResidualBlock(cost_function, loss_function, pose);
+        problem.AddResidualBlock(cost_function, new ceres::HuberLoss(0.01* weight/lidar_param.getEdgeN()), pose);
         edge_num++;
     }
     // std::cout<<"correct edge points: "<<edge_num<<endl;
@@ -262,8 +259,8 @@ void OdomEstimationClass::addSurfCost(ceres::Problem& problem, ceres::LossFuncti
         for (int j = 0; j < v_current_plane_points_num[i]; ++j) {
             std::vector<int> pointSearchInd;
             std::vector<float> pointSearchSqDis;
-            surf_kd_tree.nearestKSearch(transformed_surf->points[pt_idx], 3, pointSearchInd, pointSearchSqDis);
-            if (pointSearchSqDis[0] < 0.05 ){
+            surf_kd_tree.nearestKSearch(transformed_surf->points[pt_idx], 1, pointSearchInd, pointSearchSqDis);
+            if (pointSearchSqDis[0] < 0.01 ){
 
                 m_plane_match[surf_map->points[pointSearchInd[0]].label]++;
             }
@@ -279,13 +276,16 @@ void OdomEstimationClass::addSurfCost(ceres::Problem& problem, ceres::LossFuncti
         Eigen::Vector3d ri(pose[0], pose[1], pose[2]);
         Eigen::Matrix3d Ri = Utils::so3ToR(ri);
         auto two_normal_dot = (Utils::so3ToR(ri)*v_current_plane_info[i].head(3)).dot(pv_plane_info->at(v_pair_plane_matched[0].first).head(3));
-        if(two_normal_dot<cos(30.*3.14/180.))
+        int  weight = v_pair_plane_matched[0].second;//*v_current_plane_points_num[(v_pair_plane_matched[0].first)];
+        if(two_normal_dot<cos(20.*M_PI/180.)|| weight<v_current_plane_points_num[i]*0.3)
         {
             // cout<<"remove plane outlier"<<endl;
             continue;
         }
-        ceres::CostFunction *cost_function = new LidarPlaneFactor(v_current_plane_info[i],pv_plane_info->at(v_pair_plane_matched[0].first), v_pair_plane_matched[0].second, lidar_param.getSurfN());
-        problem.AddResidualBlock(cost_function, loss_function, pose);
+        ceres::CostFunction *cost_function = new LidarPlaneFactor(v_current_plane_info[i],pv_plane_info->at(v_pair_plane_matched[0].first),
+                                                                  weight, lidar_param.getSurfN());
+        problem.AddResidualBlock(cost_function,
+                new ceres::HuberLoss(0.005* weight/lidar_param.getSurfN()), pose);
         surf_num_matched++;
     }
 

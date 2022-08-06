@@ -12,7 +12,7 @@
         <arg name="filters" value="pointcloud" />    
     </include>
      -->
-    <param name="file_path" value="$(find ssl_slam3)/config/params.yaml"/>
+    <param name="file_path" value="$(find ssl_slam3)/config/params455.yaml"/>
 
     <node pkg="ssl_slam3" type="ssl_slam3_laser_processing_node" name="ssl_slam3_laser_processing_node" output="screen" />
     <node pkg="ssl_slam3" type="ssl_slam3_odom_estimation_node" name="ssl_slam3_odom_estimation_node" output="screen" />

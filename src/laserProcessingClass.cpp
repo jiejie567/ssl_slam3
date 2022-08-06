@@ -8,7 +8,7 @@ void LaserProcessingClass::init(std::string& file_path){
     double map_resolution = lidar_param.getLocalMapResolution();
 //    edge_downsize_filter.setLeafSize(map_resolution/4.0, map_resolution/4.0, map_resolution/4.0);
 //    surf_downsize_filter.setLeafSize(map_resolution/2.0, map_resolution/2.0, map_resolution/2.0);
-    edge_downsize_filter.setLeafSize(0.01, 0.01, 0.01);
+    edge_downsize_filter.setLeafSize(0.005, 0.005, 0.005);
     surf_downsize_filter.setLeafSize(0.1, 0.1, 0.1);
     
     edge_noise_filter.setRadiusSearch(map_resolution);
@@ -47,7 +47,9 @@ void LaserProcessingClass::featureExtraction(cv::Mat& color_im, cv::Mat& depth_i
         for(int c=0; c<depth_im.cols; c++)
         {
             float z = (float)depth_ptr[c]/lidar_param.camera_factor;
-            if(z>lidar_param.max_distance||z<lidar_param.min_distance||isnan(z)){z=0.0;}
+            if(z>lidar_param.max_distance||z<lidar_param.min_distance||isnan(z)){
+                z=0.0;
+                depth_im.at<float>(r,c)==0;}
             pt_ptr[c][0] = (c-lidar_param.camera_cx)/lidar_param.camera_fx*z*1000.0;//m->mm
             pt_ptr[c][1] = (r-lidar_param.camera_cy)/lidar_param.camera_fy*z*1000.0;//m->mm
             pt_ptr[c][2] = z*1000.0;//m->mm
@@ -91,8 +93,7 @@ void LaserProcessingClass::featureExtraction(cv::Mat& color_im, cv::Mat& depth_i
         if(cloud->size()<4) {
             continue;
         }
-        num_of_plane++;
-        plane_cnt++;
+
         //--------------------------RANSAC拟合平面--------------------------
         pcl::SampleConsensusModelPlane<pcl::PointXYZRGBL>::Ptr model_plane(
                 new pcl::SampleConsensusModelPlane<pcl::PointXYZRGBL>(cloud));
@@ -105,7 +106,8 @@ void LaserProcessingClass::featureExtraction(cv::Mat& color_im, cv::Mat& depth_i
         ransac.getInliers(inliers);            //提取内点索引
         pcl::copyPointCloud<pcl::PointXYZRGBL>(*cloud, inliers, *cloud_plane);
         *cloud_all_plane += *cloud_plane;
-
+        num_of_plane++;
+        plane_cnt++;
         //----------------------------输出模型参数---------------------------
         Eigen::VectorXf coefficient;
         ransac.getModelCoefficients(coefficient);
@@ -120,6 +122,7 @@ void LaserProcessingClass::featureExtraction(cv::Mat& color_im, cv::Mat& depth_i
         plane_info.z = coefficient[2];
         plane_info.data[3] = coefficient[3];
         plane_info.rgb = cloud_plane->size();
+        plane_info.label = cloud->size();
         plane_info_cloud->push_back(plane_info);
     }
     pcl::PointXYZRGBL plane_num;
@@ -129,8 +132,8 @@ void LaserProcessingClass::featureExtraction(cv::Mat& color_im, cv::Mat& depth_i
     *pc_out_surf = *plane_num_cloud + *plane_info_cloud + *cloud_all_plane;//num of plane + plane info + plane points
 
 // line filter
-    int length_threshold = 40;
-    int distance_threshold = 3;
+    int length_threshold = 30;
+    int distance_threshold = 6;
     int canny_th1 = 50;
     int canny_th2 = 50;
     int canny_aperture_size = 3;
@@ -141,6 +144,7 @@ void LaserProcessingClass::featureExtraction(cv::Mat& color_im, cv::Mat& depth_i
                                                        do_merge);
     cv::Mat image_gray(seg.rows, seg.cols, CV_8U);
     cvtColor(seg, image_gray, cv::COLOR_BGR2GRAY);
+    // cvtColor(color_im, image_gray, cv::COLOR_BGR2GRAY);
     cv::Mat depth_pic_8u;
     depth_im.convertTo(depth_pic_8u,CV_8U,255./9000.);
     std::vector<cv::Vec4f> lines_fld;
@@ -206,18 +210,25 @@ void LaserProcessingClass::featureExtraction(cv::Mat& color_im, cv::Mat& depth_i
         line_direction_info.z = coef[5];//nz
         line_info_cloud->push_back(line_direction_info);
 
+        //project to line
         pcl::PointXYZRGBL endpoint1 = cloud->at(inliers[0]);
         pcl::PointXYZRGBL endpoint2 = cloud->at(inliers.back());
+        Eigen::Vector3d point(coef[0],coef[1],coef[2]);
+        Eigen::Vector3d direction(coef[3],coef[4],coef[5]);
+        Eigen::Vector3d vect_end1_to_point(coef[0]-endpoint1.x,coef[1]-endpoint1.y,coef[2]-endpoint1.z);
+        Eigen::Vector3d vect_end2_to_point(coef[0]-endpoint2.x,coef[1]-endpoint2.y,coef[2]-endpoint2.z);
+        auto endpt1 = point-vect_end1_to_point.dot(direction)*direction;
+        auto endpt2 = point-vect_end2_to_point.dot(direction)*direction;
         pcl::PointXYZRGBL line_endpoint1_info;
-        line_endpoint1_info.x = endpoint1.x;
-        line_endpoint1_info.y = endpoint1.y;
-        line_endpoint1_info.z = endpoint1.z;
+        line_endpoint1_info.x = endpt1(0);
+        line_endpoint1_info.y = endpt1(1);
+        line_endpoint1_info.z = endpt1(2);
         line_info_cloud->push_back(line_endpoint1_info);
 
         pcl::PointXYZRGBL line_endpoint2_info;
-        line_endpoint2_info.x = endpoint2.x;
-        line_endpoint2_info.y = endpoint2.y;
-        line_endpoint2_info.z = endpoint2.z;
+        line_endpoint2_info.x = endpt2(0);
+        line_endpoint2_info.y = endpt2(1);
+        line_endpoint2_info.z = endpt2(2);
         line_info_cloud->push_back(line_endpoint2_info);
 
     }
