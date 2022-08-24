@@ -9,7 +9,7 @@ void LaserProcessingClass::init(std::string& file_path){
 //    edge_downsize_filter.setLeafSize(map_resolution/4.0, map_resolution/4.0, map_resolution/4.0);
 //    surf_downsize_filter.setLeafSize(map_resolution/2.0, map_resolution/2.0, map_resolution/2.0);
     edge_downsize_filter.setLeafSize(0.005, 0.005, 0.005);
-    surf_downsize_filter.setLeafSize(0.1, 0.1, 0.1);
+    surf_downsize_filter.setLeafSize(0.07, 0.07, 0.07);
     
     edge_noise_filter.setRadiusSearch(map_resolution);
     edge_noise_filter.setMinNeighborsInRadius(3);
@@ -201,7 +201,8 @@ void LaserProcessingClass::featureExtraction(cv::Mat& color_im, cv::Mat& depth_i
         line_point_info.x = coef[0];
         line_point_info.y = coef[1];
         line_point_info.z = coef[2];
-        line_point_info.label = cloud_line->size();
+        line_point_info.label = cloud->size();
+        line_point_info.rgb = cloud_line->size();
         line_info_cloud->push_back(line_point_info);
 
         pcl::PointXYZRGBL line_direction_info;

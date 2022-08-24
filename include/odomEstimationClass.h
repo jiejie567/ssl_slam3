@@ -68,19 +68,24 @@ class OdomEstimationClass{
         //plane
         int current_plane_num;
 		std::vector<Eigen::Vector4d> *pv_plane_info;
+        std::vector<double> *pv_plane_believe_rate;
         std::vector<Eigen::Vector4d> v_current_plane_info;
         std::vector<int> v_current_plane_points_num;
+        std::vector<double> v_current_plane_believe_rate;
         //line
         int current_line_num;
         std::vector<Eigen::Vector4d> *pv_line_point_info;
         std::vector<Eigen::Vector4d> *pv_line_direction_info;
+        std::vector<double> *pv_line_believe_rate;
         std::vector<Eigen::Vector4d> v_current_line_point_info;
         std::vector<Eigen::Vector4d> v_current_line_direction_info;
         std::vector<Eigen::Vector4d> v_current_line_endpoint1;
         std::vector<Eigen::Vector4d> v_current_line_endpoint2;
         std::vector<int> v_current_line_points_num;
+        std::vector<double> v_current_line_believe_rate;
 
-		// kdtree for fast indexing
+
+    // kdtree for fast indexing
 		pcl::KdTreeFLANN<pcl::PointXYZRGBL> edge_kd_tree;
 		pcl::KdTreeFLANN<pcl::PointXYZRGBL> surf_kd_tree;
 

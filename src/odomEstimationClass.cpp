@@ -20,15 +20,21 @@ OdomEstimationClass::OdomEstimationClass(){
     current_surf_points = pcl::PointCloud<pcl::PointXYZRGBL>::Ptr(new pcl::PointCloud<pcl::PointXYZRGBL>());
     current_plane_num=0;
     v_current_plane_points_num.reserve(100);
+    v_current_plane_believe_rate.reserve(100);
     pv_plane_info = new std::vector<Eigen::Vector4d>();
+    pv_plane_believe_rate = new std::vector<double>();
     pv_plane_info->reserve(10000);
+    pv_plane_believe_rate->reserve(10000);
     v_current_plane_info.reserve(100);
 
     pv_line_point_info = new std::vector<Eigen::Vector4d>();
+    pv_line_believe_rate = new std::vector<double>();
     pv_line_direction_info = new std::vector<Eigen::Vector4d>();
     pv_line_point_info->reserve(10000);
+    pv_line_believe_rate->reserve(10000);
     pv_line_direction_info->reserve(10000);
     v_current_line_points_num.reserve(100);
+    v_current_line_believe_rate.reserve(100);
     v_current_line_point_info.reserve(100);
     v_current_line_direction_info.reserve(100);
     v_current_line_endpoint1.reserve(100);
@@ -55,17 +61,21 @@ void OdomEstimationClass::initMapWithPoints(const pcl::PointCloud<pcl::PointXYZR
     surf_kd_tree.setInputCloud(surf_map);
     addLidarFeature(edge_in,surf_in);
     pv_plane_info->insert(pv_plane_info->end(),v_current_plane_info.begin(),v_current_plane_info.end());
+    pv_plane_believe_rate->insert(pv_plane_believe_rate->end(),v_current_plane_believe_rate.begin(),v_current_plane_believe_rate.end());
     pv_line_point_info->insert(pv_line_point_info->end(),v_current_line_point_info.begin(),v_current_line_point_info.end());
+    pv_line_believe_rate->insert(pv_line_believe_rate->end(),v_current_line_believe_rate.begin(),v_current_line_believe_rate.end());
     pv_line_direction_info->insert(pv_line_direction_info->end(),v_current_line_direction_info.begin(),v_current_line_direction_info.end());
 }
 
 bool OdomEstimationClass::initialize(void){
     for (int i = 0; i < current_plane_num; ++i) {
         pv_plane_info->push_back(Eigen::Vector4d());
+        pv_plane_believe_rate->push_back(0.f);
     }
     for (int i = 0; i < current_line_num; ++i) {
         pv_line_point_info->push_back(Eigen::Vector4d());
         pv_line_direction_info->push_back(Eigen::Vector4d());
+        pv_line_believe_rate->push_back(0.f);
     }
     if(pose_r_arr.size()<common_param.getInitFrame())
         return is_initialized;
@@ -146,9 +156,11 @@ void OdomEstimationClass::addLidarFeature(const pcl::PointCloud<pcl::PointXYZRGB
     std::vector<int> indexs;
     v_current_plane_points_num.clear();
     v_current_plane_info.clear();
+    v_current_plane_believe_rate.clear();
     for(auto i = 1;i<current_plane_num+1;i++){
         indexs.push_back(i);
         v_current_plane_points_num.push_back(surf_in->at(i).rgb);
+        v_current_plane_believe_rate.push_back(surf_in->at(i).rgb/static_cast<double>(surf_in->at(i).label));
     }
     for (auto i : indexs)
     {
@@ -162,6 +174,7 @@ void OdomEstimationClass::addLidarFeature(const pcl::PointCloud<pcl::PointXYZRGB
     current_line_num = static_cast<int>(edge_in->at(0).x);
     std::vector<int> indexs_line;
     v_current_line_points_num.clear();
+    v_current_line_believe_rate.clear();
     v_current_line_point_info.clear();
     v_current_line_direction_info.clear();
     v_current_line_endpoint1.clear();
@@ -171,7 +184,8 @@ void OdomEstimationClass::addLidarFeature(const pcl::PointCloud<pcl::PointXYZRGB
     }
     for (auto i : indexs_line)
     {
-        v_current_line_points_num.push_back(edge_in->at(i-3).label);
+        v_current_line_points_num.push_back(edge_in->at(i-3).rgb);
+        v_current_line_believe_rate.push_back(edge_in->at(i-3).rgb/static_cast<double>(edge_in->at(i-3).label));
         Eigen::Vector4d line_point(edge_in->at(i-3).x,edge_in->at(i-3).y,edge_in->at(i-3).z,1.f);
         Eigen::Vector4d line_direction(edge_in->at(i-2).x,edge_in->at(i-2).y,edge_in->at(i-2).z,1.f);
         Eigen::Vector4d line_endpoint1(edge_in->at(i-1).x,edge_in->at(i-1).y,edge_in->at(i-1).z,1.f);
@@ -224,12 +238,12 @@ void OdomEstimationClass::addEdgeCost(ceres::Problem& problem, ceres::LossFuncti
 
         auto two_normal_dot = (Utils::so3ToR(ri)*v_current_line_direction_info[i].head(3)).dot(
                 pv_line_direction_info->at(v_pair_line_matched[0].first).head(3));
-        if(abs(two_normal_dot)<cos(20.*M_PI/180.))
+        if(abs(two_normal_dot)<cos(20.*M_PI/180.)||v_pair_line_matched[0].second<v_current_line_points_num[i]*0.3)
         {
 //            cout<<"remove line outlier"<<endl;
             continue;
         }
-        int weight = v_pair_line_matched[0].second;
+        int weight = v_pair_line_matched[0].second*v_current_line_believe_rate[i]*pv_line_believe_rate->at(v_pair_line_matched[0].first);
         ceres::CostFunction *cost_function = new LidarLineFactor(
                 v_current_line_endpoint1[i],v_current_line_endpoint2[i],
                 pv_line_point_info->at(v_pair_line_matched[0].first),
@@ -260,7 +274,7 @@ void OdomEstimationClass::addSurfCost(ceres::Problem& problem, ceres::LossFuncti
             std::vector<int> pointSearchInd;
             std::vector<float> pointSearchSqDis;
             surf_kd_tree.nearestKSearch(transformed_surf->points[pt_idx], 1, pointSearchInd, pointSearchSqDis);
-            if (pointSearchSqDis[0] < 0.01 ){
+            if (pointSearchSqDis[0] < 0.1 ){
 
                 m_plane_match[surf_map->points[pointSearchInd[0]].label]++;
             }
@@ -275,22 +289,24 @@ void OdomEstimationClass::addSurfCost(ceres::Problem& problem, ceres::LossFuncti
                   [](std::pair<int,int> a, std::pair<int,int> b){return a.second > b.second;});
         Eigen::Vector3d ri(pose[0], pose[1], pose[2]);
         Eigen::Matrix3d Ri = Utils::so3ToR(ri);
-        auto two_normal_dot = (Utils::so3ToR(ri)*v_current_plane_info[i].head(3)).dot(pv_plane_info->at(v_pair_plane_matched[0].first).head(3));
-        int  weight = v_pair_plane_matched[0].second;//*v_current_plane_points_num[(v_pair_plane_matched[0].first)];
-        if(two_normal_dot<cos(20.*M_PI/180.)|| weight<v_current_plane_points_num[i]*0.3)
-        {
-            // cout<<"remove plane outlier"<<endl;
-            continue;
+        for(int j =0;j<3&&j<v_pair_plane_matched.size();j++){
+            auto two_normal_dot = (Utils::so3ToR(ri)*v_current_plane_info[i].head(3)).dot(pv_plane_info->at(v_pair_plane_matched[j].first).head(3));
+            if(two_normal_dot>cos(30.*M_PI/180.)&&v_pair_plane_matched[j].second>v_current_plane_points_num[i]*0.3)//|| v_pair_plane_matched[0].second<v_current_plane_points_num[i]*0.3)
+            {
+                int  weight = v_pair_plane_matched[j].second*pv_plane_believe_rate->at(v_pair_plane_matched[j].first)*v_current_plane_believe_rate[i];
+                ceres::CostFunction *cost_function = new LidarPlaneFactor(v_current_plane_info[i],pv_plane_info->at(v_pair_plane_matched[j].first),
+                                                                          weight, lidar_param.getSurfN());
+                problem.AddResidualBlock(cost_function,
+                                         new ceres::HuberLoss(0.005* weight/lidar_param.getSurfN()), pose);
+                surf_num_matched++;
+                break;
+            }
         }
-        ceres::CostFunction *cost_function = new LidarPlaneFactor(v_current_plane_info[i],pv_plane_info->at(v_pair_plane_matched[0].first),
-                                                                  weight, lidar_param.getSurfN());
-        problem.AddResidualBlock(cost_function,
-                new ceres::HuberLoss(0.005* weight/lidar_param.getSurfN()), pose);
-        surf_num_matched++;
     }
 
     if(surf_num_matched<2){
         std::cout<<"not enough correct surf planes"<<std::endl;
+        cout<< "plane num: "<<surf_num_matched<<endl;
     }
 }
 
@@ -419,8 +435,10 @@ void OdomEstimationClass::updateLocalMap(Eigen::Isometry3d& transform){
         line_direction.head(3) = transform.linear()*line_direction.head(3);
     }
     pv_plane_info->insert(pv_plane_info->end(),v_current_plane_info.begin(),v_current_plane_info.end());
+    pv_plane_believe_rate->insert(pv_plane_believe_rate->end(),v_current_plane_believe_rate.begin(),v_current_plane_believe_rate.end());
     pv_line_point_info->insert(pv_line_point_info->end(),
             v_current_line_point_info.begin(),v_current_line_point_info.end());
+    pv_line_believe_rate->insert(pv_line_believe_rate->end(),v_current_line_believe_rate.begin(),v_current_line_believe_rate.end());
     pv_line_direction_info->insert(pv_line_direction_info->end(),
             v_current_line_direction_info.begin(),v_current_line_direction_info.end());
 
