@@ -26,7 +26,7 @@ public:
 	virtual bool Evaluate(double const *const *parameters, double *residuals, double **jacobians) const;
 
 	Eigen::Vector3d curr_point;
-	Eigen::Vector3d last_point_a;
+    Eigen::Vector3d last_point_a;
 	Eigen::Vector3d last_point_b;
 	double sqrt_info;
 };
@@ -45,18 +45,16 @@ public:
 
 class LidarLineFactor : public ceres::SizedCostFunction<1, 15> {
 public:
-    LidarLineFactor(Eigen::Vector4d end_point1, Eigen::Vector4d end_point2,
-            Eigen::Vector4d target_line_point,Eigen::Vector4d target_direction,
-            int quantity_line_matched, double covariance_in);
+    LidarLineFactor(Eigen::Vector4d curr_end_, Eigen::Vector4d last_point_a_in, Eigen::Vector4d last_point_b_in, double covariance_in,
+    double weight);
     virtual ~LidarLineFactor() {}
     virtual bool Evaluate(double const *const *parameters, double *residuals, double **jacobians) const;
 
-    Eigen::Vector3d end_point1_;
-    Eigen::Vector3d end_point2_;
-    Eigen::Vector3d target_line_point_;
-    Eigen::Vector3d target_direction_;
+    Eigen::Vector3d curr_end_pt;
+    Eigen::Vector3d last_point_a;
+    Eigen::Vector3d last_point_b;
     double sqrt_info;
-    int quantity_line_matched_;
+    double weight_;
 };
 #endif // _LIDAR_OPTIMIZATION_FACTOR_H_
 

@@ -8,8 +8,8 @@ void LaserProcessingClass::init(std::string& file_path){
     double map_resolution = lidar_param.getLocalMapResolution();
 //    edge_downsize_filter.setLeafSize(map_resolution/4.0, map_resolution/4.0, map_resolution/4.0);
 //    surf_downsize_filter.setLeafSize(map_resolution/2.0, map_resolution/2.0, map_resolution/2.0);
-    edge_downsize_filter.setLeafSize(0.005, 0.005, 0.005);
-    surf_downsize_filter.setLeafSize(0.07, 0.07, 0.07);
+    edge_downsize_filter.setLeafSize(0.01, 0.01, 0.01);
+    surf_downsize_filter.setLeafSize(0.1, 0.1, 0.1);
     
     edge_noise_filter.setRadiusSearch(map_resolution);
     edge_noise_filter.setMinNeighborsInRadius(3);
@@ -17,10 +17,14 @@ void LaserProcessingClass::init(std::string& file_path){
     surf_noise_filter.setMinNeighborsInRadius(14);
     num_of_plane=0;
     num_of_line=0;
+    gap_line = 2;
+    gap_plane = 4;
+    gap_surf = 4;
 }
 
 
-void LaserProcessingClass::featureExtraction(cv::Mat& color_im, cv::Mat& depth_im, pcl::PointCloud<pcl::PointXYZRGBL>::Ptr& pc_out_edge, pcl::PointCloud<pcl::PointXYZRGBL>::Ptr& pc_out_surf){
+void LaserProcessingClass::featureExtraction(cv::Mat& color_im, cv::Mat& depth_im, pcl::PointCloud<pcl::PointXYZRGBL>::Ptr& pc_out_edge,
+        pcl::PointCloud<pcl::PointXYZRGBL>::Ptr& pc_out_surf, pcl::PointCloud<pcl::PointXYZRGB>::Ptr& cloud_filter){
 
 // plane filter
     struct OrganizedImage3D {
@@ -50,15 +54,25 @@ void LaserProcessingClass::featureExtraction(cv::Mat& color_im, cv::Mat& depth_i
             if(z>lidar_param.max_distance||z<lidar_param.min_distance||isnan(z)){
                 z=0.0;
                 depth_im.at<float>(r,c)==0;}
-            pt_ptr[c][0] = (c-lidar_param.camera_cx)/lidar_param.camera_fx*z*1000.0;//m->mm
-            pt_ptr[c][1] = (r-lidar_param.camera_cy)/lidar_param.camera_fy*z*1000.0;//m->mm
+            pcl::PointXYZRGB p;
+            p.z = z;
+            p.x = (c - lidar_param.camera_cx) * p.z / lidar_param.camera_fx;
+            p.y = (r - lidar_param.camera_cy) * p.z / lidar_param.camera_fy;
+
+            p.b = color_im.ptr<uchar>(r)[c*3];
+            p.g = color_im.ptr<uchar>(r)[c*3+1];
+            p.r = color_im.ptr<uchar>(r)[c*3+2];
+            cloud_filter->push_back( p );
+
+            pt_ptr[c][0] = p.x*1000.0;//m->mm
+            pt_ptr[c][1] = p.y*1000.0;//m->mm
             pt_ptr[c][2] = z*1000.0;//m->mm
         }
     }
     PlaneFitter pf;
     pf.minSupport = 300;
-    pf.windowWidth = 12;
-    pf.windowHeight = 12;
+    pf.windowWidth = 6;
+    pf.windowHeight = 6;
     pf.doRefine = true;
 
     cv::Mat seg(depth_im.rows, depth_im.cols, CV_8UC3);
@@ -80,8 +94,7 @@ void LaserProcessingClass::featureExtraction(cv::Mat& color_im, cv::Mat& depth_i
             pt.x = cloud_peac[row][col][0] / 1000.; //mm -> m
             pt.y = cloud_peac[row][col][1] / 1000.;
             pt.z = cloud_peac[row][col][2] / 1000.;
-            if(isnan(pt.z))
-                continue;
+
             pt.b = seg.ptr<uchar>(row)[col * 3];
             pt.g = seg.ptr<uchar>(row)[col * 3 + 1];
             pt.r = seg.ptr<uchar>(row)[col * 3 + 2];
@@ -132,8 +145,8 @@ void LaserProcessingClass::featureExtraction(cv::Mat& color_im, cv::Mat& depth_i
     *pc_out_surf = *plane_num_cloud + *plane_info_cloud + *cloud_all_plane;//num of plane + plane info + plane points
 
 // line filter
-    int length_threshold = 30;
-    int distance_threshold = 6;
+    int length_threshold = 40;
+    int distance_threshold = 4;
     int canny_th1 = 50;
     int canny_th2 = 50;
     int canny_aperture_size = 3;
@@ -144,7 +157,7 @@ void LaserProcessingClass::featureExtraction(cv::Mat& color_im, cv::Mat& depth_i
                                                        do_merge);
     cv::Mat image_gray(seg.rows, seg.cols, CV_8U);
     cvtColor(seg, image_gray, cv::COLOR_BGR2GRAY);
-    // cvtColor(color_im, image_gray, cv::COLOR_BGR2GRAY);
+    cvtColor(color_im, image_gray, cv::COLOR_BGR2GRAY);
     cv::Mat depth_pic_8u;
     depth_im.convertTo(depth_pic_8u,CV_8U,255./9000.);
     std::vector<cv::Vec4f> lines_fld;
@@ -207,8 +220,8 @@ void LaserProcessingClass::featureExtraction(cv::Mat& color_im, cv::Mat& depth_i
 
         pcl::PointXYZRGBL line_direction_info;
         line_direction_info.x = coef[3]; //nx
-        line_direction_info.y = coef[4];//ny
-        line_direction_info.z = coef[5];//nz
+        line_direction_info.y = coef[4]; //ny
+        line_direction_info.z = coef[5]; //nz
         line_info_cloud->push_back(line_direction_info);
 
         //project to line

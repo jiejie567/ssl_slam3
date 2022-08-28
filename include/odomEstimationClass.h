@@ -76,6 +76,8 @@ class OdomEstimationClass{
         int current_line_num;
         std::vector<Eigen::Vector4d> *pv_line_point_info;
         std::vector<Eigen::Vector4d> *pv_line_direction_info;
+        std::vector<Eigen::Vector4d> *pv_line_endpoint1;
+        std::vector<Eigen::Vector4d> *pv_line_endpoint2; 
         std::vector<double> *pv_line_believe_rate;
         std::vector<Eigen::Vector4d> v_current_line_point_info;
         std::vector<Eigen::Vector4d> v_current_line_direction_info;
@@ -99,6 +101,7 @@ class OdomEstimationClass{
 		pcl::VoxelGrid<pcl::PointXYZRGBL> edge_downsize_filter;
 		pcl::VoxelGrid<pcl::PointXYZRGBL> surf_downsize_filter;
 		
+		void addLineCost(ceres::Problem& problem, ceres::LossFunction *loss_function, double* pose);
 		void addEdgeCost(ceres::Problem& problem, ceres::LossFunction *loss_function, double* pose);
 		void addSurfCost(ceres::Problem& problem, ceres::LossFunction *loss_function, double* pose);
 		void addOdometryCost(const Eigen::Isometry3d& odom, ceres::Problem& problem, ceres::LossFunction *loss_function, double* pose1, double* pose2);

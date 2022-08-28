@@ -48,7 +48,8 @@ class LaserProcessingClass {
     public:
     	LaserProcessingClass(){};
 		void init(std::string& file_path);
-        void featureExtraction(cv::Mat& color_im,cv::Mat& depth_im, pcl::PointCloud<pcl::PointXYZRGBL>::Ptr& pc_out_edge, pcl::PointCloud<pcl::PointXYZRGBL>::Ptr& pc_out_surf);
+        void featureExtraction(cv::Mat& color_im,cv::Mat& depth_im, pcl::PointCloud<pcl::PointXYZRGBL>::Ptr& pc_out_edge,
+                pcl::PointCloud<pcl::PointXYZRGBL>::Ptr& pc_out_surf, pcl::PointCloud<pcl::PointXYZRGB>::Ptr& cloud_filter);
         int frame_count;
         LidarParam lidar_param;
     private:
@@ -58,6 +59,9 @@ class LaserProcessingClass {
      	pcl::RadiusOutlierRemoval<pcl::PointXYZRGBL> surf_noise_filter;
         uint32_t num_of_plane;
         uint32_t num_of_line;
+        int gap_plane;
+        int gap_line;
+        int gap_surf;
 };
 
 #endif // _LASER_PROCESSING_CLASS_H_

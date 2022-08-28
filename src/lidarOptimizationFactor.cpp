@@ -81,41 +81,71 @@ bool LidarEdgeFactor::Evaluate(double const *const *parameters, double *residual
     return true;
 }
 
-LidarLineFactor::LidarLineFactor(Eigen::Vector4d end_point1, Eigen::Vector4d end_point2,
-                Eigen::Vector4d target_line_point,Eigen::Vector4d target_direction,
-                int quantity_line_matched, double covariance_in){
-    end_point1_ = end_point1.head(3);
-    end_point2_ = end_point2.head(3);
-    target_line_point_ = target_line_point.head(3);
-    target_direction_ = target_direction.head(3);
-    quantity_line_matched_ = quantity_line_matched;
-    sqrt_info = 1.0 /covariance_in;
-};
-bool LidarLineFactor::Evaluate(const double *const *parameters, double *residuals, double **jacobians) const {
+LidarLineFactor::LidarLineFactor(Eigen::Vector4d curr_end_, Eigen::Vector4d last_point_a_in, Eigen::Vector4d last_point_b_in, double covariance_in,
+        double weight){
+    curr_end_pt = curr_end_.head(3);
+    last_point_a = last_point_a_in.head(3);
+    last_point_b = last_point_b_in.head(3);
+    sqrt_info = 1.0 / covariance_in;
+    weight_ = weight;
+}
+
+bool LidarLineFactor::Evaluate(double const *const *parameters, double *residuals, double **jacobians) const {
     Eigen::Vector3d ri(parameters[0][0], parameters[0][1], parameters[0][2]);
     Eigen::Vector3d Pi(parameters[0][3], parameters[0][4], parameters[0][5]);
     Eigen::Matrix3d Ri = Utils::so3ToR(ri);
-    Eigen::Vector3d vector_distance1= Ri*end_point1_+Pi-target_line_point_;
-    Eigen::Vector3d vector_distance2= Ri*end_point2_+Pi-target_line_point_;
 
-    residuals[0] = sqrt_info*quantity_line_matched_*(
-                (vector_distance1.cross(target_direction_).norm())+
-                (vector_distance2.cross(target_direction_).norm()));
-    if (jacobians != nullptr && jacobians[0] != nullptr) {
-        Eigen::Map<Eigen::Matrix<double, 1, 15, Eigen::RowMajor> > jacobian_i(jacobians[0]);
-        jacobian_i.setZero();
-        Eigen::Vector3d res1 = Utils::skew(target_direction_)*(target_line_point_-Ri*end_point1_-Pi);
-        Eigen::Vector3d res2 = Utils::skew(target_direction_)*(target_line_point_-Ri*end_point2_-Pi);
-
-        jacobian_i.block<1,3>(0, 0) = sqrt_info*quantity_line_matched_*(res1.transpose()/res1.norm()*Utils::skew(target_direction_)*
-                                Ri*Utils::skew(end_point1_)+res2.transpose()/res2.norm()*Utils::skew(target_direction_)*
-                                Ri*Utils::skew(end_point2_));
-        jacobian_i.block<1,3>(0, 3) = (-1)*sqrt_info*quantity_line_matched_*
-                (res1.transpose()/res1.norm()*Utils::skew(target_direction_)*Eigen::Matrix3d::Identity(3,3)+
-                        res2.transpose()/res2.norm()*Utils::skew(target_direction_)*Eigen::Matrix3d::Identity(3,3));
+    Eigen::Vector3d lp = Ri * curr_end_pt + Pi;
+    Eigen::Vector3d nu = (lp - last_point_a).cross(lp - last_point_b);
+    Eigen::Vector3d de = last_point_a - last_point_b;
+    residuals[0] = weight_*sqrt_info * nu.norm() / de.norm();
+    if(jacobians != NULL){
+        if(jacobians[0] != NULL){
+            Eigen::Matrix<double, 3, 15> dp_by_so3xyz = Eigen::Matrix<double, 3, 15>::Zero();
+            dp_by_so3xyz.block<3, 3>(0, 0) = - Ri * Utils::skew(curr_end_pt);
+            dp_by_so3xyz.block<3, 3>(0, 3) = Eigen::Matrix3d::Identity();
+            Eigen::Map<Eigen::Matrix<double, 1, 15, Eigen::RowMajor> > jacobian_i(jacobians[0]);
+            jacobian_i.setZero();
+            jacobian_i = - weight_*sqrt_info * nu.transpose() / nu.norm() * Utils::skew(de) * dp_by_so3xyz / de.norm();
+        }
     }
     return true;
 }
+//LidarLineFactor::LidarLineFactor(Eigen::Vector4d end_point1, Eigen::Vector4d end_point2,
+//                Eigen::Vector4d target_line_point,Eigen::Vector4d target_direction,
+//                int quantity_line_matched, double covariance_in){
+//    end_point1_ = end_point1.head(3);
+//    end_point2_ = end_point2.head(3);
+//    target_line_point_ = target_line_point.head(3);
+//    target_direction_ = target_direction.head(3);
+//    quantity_line_matched_ = quantity_line_matched;
+//    sqrt_info = 1.0 /covariance_in;
+//};
+//bool LidarLineFactor::Evaluate(const double *const *parameters, double *residuals, double **jacobians) const {
+//    Eigen::Vector3d ri(parameters[0][0], parameters[0][1], parameters[0][2]);
+//    Eigen::Vector3d Pi(parameters[0][3], parameters[0][4], parameters[0][5]);
+//    Eigen::Matrix3d Ri = Utils::so3ToR(ri);
+//    Eigen::Vector3d vector_distance1= Ri*end_point1_+Pi-target_line_point_;
+//    Eigen::Vector3d vector_distance2= Ri*end_point2_+Pi-target_line_point_;
+//
+//    residuals[0] = sqrt_info*quantity_line_matched_*(
+//                (vector_distance1.cross(target_direction_).norm())+
+//                (vector_distance2.cross(target_direction_).norm()));
+//    if (jacobians != nullptr && jacobians[0] != nullptr) {
+//        Eigen::Map<Eigen::Matrix<double, 1, 15, Eigen::RowMajor> > jacobian_i(jacobians[0]);
+//        jacobian_i.setZero();
+//        Eigen::Vector3d res1 = Utils::skew(target_direction_)*(target_line_point_-Ri*end_point1_-Pi);
+//        Eigen::Vector3d res2 = Utils::skew(target_direction_)*(target_line_point_-Ri*end_point2_-Pi);
+//
+//        jacobian_i.block<1,3>(0, 0) = sqrt_info*quantity_line_matched_*(res1.transpose()/res1.norm()*Utils::skew(target_direction_)*
+//                                Ri*Utils::skew(end_point1_)+res2.transpose()/res2.norm()*Utils::skew(target_direction_)*
+//                                Ri*Utils::skew(end_point2_));
+//        jacobian_i.block<1,3>(0, 3) = (-1)*sqrt_info*quantity_line_matched_*
+//                (res1.transpose()/res1.norm()*Utils::skew(target_direction_)*Eigen::Matrix3d::Identity(3,3)+
+//                        res2.transpose()/res2.norm()*Utils::skew(target_direction_)*Eigen::Matrix3d::Identity(3,3));
+//    }
+//    return true;
+//}
 
 LidarPlaneFactor::LidarPlaneFactor(Eigen::Vector4d current_plane_hessian, Eigen::Vector4d traget_plane_hessian, int quantity_plane_matched, double covariance_in){
     current_plane_hessian_ = current_plane_hessian;

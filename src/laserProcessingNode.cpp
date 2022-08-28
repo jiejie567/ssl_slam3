@@ -52,49 +52,45 @@ void RGBDHandler(const sensor_msgs::ImageConstPtr& msgRGB,const sensor_msgs::Ima
 
     //read data
     laserProcessing.frame_count++;
-//    if(laserProcessing.frame_count%4!=0)
-//        return;
     cv_bridge::CvImagePtr color_ptr, depth_ptr;
     cv::Mat color_pic, depth_pic;
     color_ptr = cv_bridge::toCvCopy(msgRGB, sensor_msgs::image_encodings::BGR8);
     color_pic = color_ptr->image;
     depth_ptr = cv_bridge::toCvCopy(msgD, sensor_msgs::image_encodings::TYPE_32FC1);
     depth_pic = depth_ptr->image;
-    pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud ( new pcl::PointCloud<pcl::PointXYZRGB> );
-    ros::Time pointcloud_time = msgRGB->header.stamp;
-    double ThMaxDepth = laserProcessing.lidar_param.max_distance * laserProcessing.lidar_param.camera_factor;
-    double ThMinDepth = laserProcessing.lidar_param.min_distance * laserProcessing.lidar_param.camera_factor;
-    for (int m = 0; m < depth_pic.rows; m++){
-        for (int n = 0; n < depth_pic.cols; n++){
-            if(depth_pic.ptr<float>(m)[n] <  ThMinDepth ||
-            depth_pic.ptr<float>(m)[n] > ThMaxDepth)
-                depth_pic.ptr<float>(m)[n] = 0.;//depth filter
-            float d = depth_pic.ptr<float>(m)[n];//ushort d = depth_pic.ptr<ushort>(m)[n];
-            if (d == 0.)
-                continue;
-            pcl::PointXYZRGB p;
-            p.z = double(d) /  laserProcessing.lidar_param.camera_factor;
-            p.x = (n - laserProcessing.lidar_param.camera_cx) * p.z / laserProcessing.lidar_param.camera_fx;
-            p.y = (m - laserProcessing.lidar_param.camera_cy) * p.z / laserProcessing.lidar_param.camera_fy;
 
-            p.b = color_pic.ptr<uchar>(m)[n*3];
-            p.g = color_pic.ptr<uchar>(m)[n*3+1];
-            p.r = color_pic.ptr<uchar>(m)[n*3+2];
-            cloud->points.push_back( p );
-        }
-    }
-//    cout<<1<<endl;
+//    double ThMaxDepth = laserProcessing.lidar_param.max_distance * laserProcessing.lidar_param.camera_factor;
+//    double ThMinDepth = laserProcessing.lidar_param.min_distance * laserProcessing.lidar_param.camera_factor;
+//    for (int m = 0; m < depth_pic.rows; m++){
+//        for (int n = 0; n < depth_pic.cols; n++){
+//            if(depth_pic.ptr<float>(m)[n] <  ThMinDepth ||
+//            depth_pic.ptr<float>(m)[n] > ThMaxDepth)
+//                depth_pic.ptr<float>(m)[n] = 0.;//depth filter
+//            float d = depth_pic.ptr<float>(m)[n];//ushort d = depth_pic.ptr<ushort>(m)[n];
+//            if (d == 0.)
+//                continue;
+//            pcl::PointXYZRGB p;
+//            p.z = double(d) /  laserProcessing.lidar_param.camera_factor;
+//            p.x = (n - laserProcessing.lidar_param.camera_cx) * p.z / laserProcessing.lidar_param.camera_fx;
+//            p.y = (m - laserProcessing.lidar_param.camera_cy) * p.z / laserProcessing.lidar_param.camera_fy;
+//
+//            p.b = color_pic.ptr<uchar>(m)[n*3];
+//            p.g = color_pic.ptr<uchar>(m)[n*3+1];
+//            p.r = color_pic.ptr<uchar>(m)[n*3+2];
+//            cloud->points.push_back( p );
+//        }
+//    }
     pcl::PointCloud<pcl::PointXYZRGBL>::Ptr pointcloud_edge(new pcl::PointCloud<pcl::PointXYZRGBL>());
     pcl::PointCloud<pcl::PointXYZRGBL>::Ptr pointcloud_surf(new pcl::PointCloud<pcl::PointXYZRGBL>());
-
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_filter ( new pcl::PointCloud<pcl::PointXYZRGB> ());
     static TicToc timer("laser processing");
     timer.tic();
-    laserProcessing.featureExtraction(color_pic,depth_pic, pointcloud_edge,pointcloud_surf);
+    laserProcessing.featureExtraction(color_pic,depth_pic, pointcloud_edge, pointcloud_surf, cloud_filter);
     timer.toc(60);
 
-
+    ros::Time pointcloud_time = msgRGB->header.stamp;
     sensor_msgs::PointCloud2 laserCloudFilteredMsg;
-    pcl::toROSMsg(*cloud, laserCloudFilteredMsg);
+    pcl::toROSMsg(*cloud_filter, laserCloudFilteredMsg);
     laserCloudFilteredMsg.header.stamp = pointcloud_time;
     laserCloudFilteredMsg.header.frame_id = "camera_depth_optical_frame";
     pubLaserCloudFiltered.publish(laserCloudFilteredMsg);
