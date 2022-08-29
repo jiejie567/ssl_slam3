@@ -107,7 +107,8 @@ void LidarParam::loadParam(std::string& path){
         odom_n(i+3) = odom_n_xyz;
     }
     edge_n = readDouble(node,"edge_n",1e-3);
-    surf_n = readDouble(node,"surf_n",1e-3);
+    plane_n = readDouble(node, "plane_n", 1e-3);
+    surf_n = readDouble(node, "surf_n", 1e-2);
     local_map_size = readDouble(node,"local_map_size",10.0);
     local_map_resolution = readDouble(node,"local_map_resolution",0.05);
 
@@ -117,6 +118,11 @@ void LidarParam::loadParam(std::string& path){
     map_cell_width_range = readInt(node,"map_cell_width_range",2);
     map_cell_height_range = readInt(node,"map_cell_height_range",2);
     map_cell_depth_range = readInt(node,"map_cell_depth_range",2);
+
+    gap_line = readInt(node,"gap_line",3);
+    gap_plane = readInt(node,"gap_plane",20);
+    gap_surf = readInt(node,"gap_surf",10);
+
     fsSettings.release();
 }
 
@@ -131,6 +137,9 @@ Eigen::Matrix<double, 6, 1> LidarParam::getOdomN(){
 }
 double LidarParam::getEdgeN(){
     return edge_n;
+}
+double LidarParam::getPlaneN(){
+    return plane_n;
 }
 double LidarParam::getSurfN(){
     return surf_n;

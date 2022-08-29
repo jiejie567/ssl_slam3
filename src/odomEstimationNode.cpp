@@ -37,8 +37,9 @@ void imuCallback(const sensor_msgs::ImuConstPtr &imu_msg) {
     con.notify_one();
 }
 
-std::queue<sensor_msgs::PointCloud2ConstPtr> surf_points_buf;
+std::queue<sensor_msgs::PointCloud2ConstPtr> plane_points_buf;
 std::queue<sensor_msgs::PointCloud2ConstPtr> edge_points_buf;
+std::queue<sensor_msgs::PointCloud2ConstPtr> surf_points_buf;
 double last_lidar_time = 0.0;
 void edgeCloudHandler(const sensor_msgs::PointCloud2ConstPtr &lidar_msg){
     sensor_lock.lock();
@@ -50,13 +51,18 @@ void edgeCloudHandler(const sensor_msgs::PointCloud2ConstPtr &lidar_msg){
     sensor_lock.unlock();
     con.notify_one();
 }
+void planeCloudHandler(const sensor_msgs::PointCloud2ConstPtr &lidar_msg){
+    sensor_lock.lock();
+    plane_points_buf.push(lidar_msg);
+    sensor_lock.unlock();
+    con.notify_one();
+}
 void surfCloudHandler(const sensor_msgs::PointCloud2ConstPtr &lidar_msg){
     sensor_lock.lock();
     surf_points_buf.push(lidar_msg);
     sensor_lock.unlock();
     con.notify_one();
 }
-
 
 std::vector<std::pair<std::vector<sensor_msgs::ImuConstPtr>, std::vector<sensor_msgs::PointCloud2ConstPtr>>> message_syn_buf;
 std::mutex message_lock;
@@ -65,7 +71,7 @@ double last_synchronization_time = 0.0;
 bool synchronizeSensors(void){
     while(true){
         // no measurements, quit
-        if (imu_buf.empty() || edge_points_buf.empty() || surf_points_buf.empty())
+        if (imu_buf.empty() || edge_points_buf.empty() || plane_points_buf.empty() || surf_points_buf.empty())
             return false;
 
         double lidar_time = edge_points_buf.front()->header.stamp.toSec();
@@ -74,14 +80,14 @@ bool synchronizeSensors(void){
             return false;;              
         }        
         // check point cloud buf 
-        if(edge_points_buf.front()->header.stamp.toSec()<surf_points_buf.front()->header.stamp.toSec()){
-            ROS_WARN("time stamp unaligned error and odom discarded, edge points time < surf points time"); 
+        if(edge_points_buf.front()->header.stamp.toSec() < plane_points_buf.front()->header.stamp.toSec()){
+            ROS_WARN("time stamp unaligned error and odom discarded, edge points time < plane points time");
             edge_points_buf.pop();
             continue;              
         }
-        if(edge_points_buf.front()->header.stamp.toSec()>surf_points_buf.front()->header.stamp.toSec()){
-            ROS_WARN("time stamp unaligned error and odom discarded, edge points time > surf points time"); 
-            surf_points_buf.pop();
+        if(edge_points_buf.front()->header.stamp.toSec() > plane_points_buf.front()->header.stamp.toSec()){
+            ROS_WARN("time stamp unaligned error and odom discarded, edge points time > plane points time");
+            plane_points_buf.pop();
             continue;              
         }
 
@@ -96,13 +102,18 @@ bool synchronizeSensors(void){
             while(!imu_buf.empty() && imu_buf.front()->header.stamp.toSec() < lidar_time)
                 imu_buf.pop();
             pcl::PointCloud<pcl::PointXYZRGBL>::Ptr edge_points_in(new pcl::PointCloud<pcl::PointXYZRGBL>());
-            pcl::PointCloud<pcl::PointXYZRGBL>::Ptr surf_points_in(new pcl::PointCloud<pcl::PointXYZRGBL>());
+            pcl::PointCloud<pcl::PointXYZRGBL>::Ptr plane_points_in(new pcl::PointCloud<pcl::PointXYZRGBL>());
+            pcl::PointCloud<pcl::PointXYZRGB>::Ptr surf_points_in(new pcl::PointCloud<pcl::PointXYZRGB>());
+
             pcl::fromROSMsg(*edge_points_buf.front(), *edge_points_in);
+            pcl::fromROSMsg(*plane_points_buf.front(), *plane_points_in);
             pcl::fromROSMsg(*surf_points_buf.front(), *surf_points_in);
-            odom_estimator.initMapWithPoints(edge_points_in, surf_points_in);
+
+            odom_estimator.initMapWithPoints(edge_points_in, plane_points_in, surf_points_in);
             edge_points_buf.pop();
+            plane_points_buf.pop();
             surf_points_buf.pop();
-            
+
             // publish first odometry
             nav_msgs::Odometry fusionOdometry;
             fusionOdometry.header.frame_id = "map"; 
@@ -130,8 +141,10 @@ bool synchronizeSensors(void){
             if (imu_buf_temp.empty())
                 ROS_WARN("no imu between two image");
             lidar_buf_temp.push_back(edge_points_buf.front());
+            lidar_buf_temp.push_back(plane_points_buf.front());
             lidar_buf_temp.push_back(surf_points_buf.front());
             edge_points_buf.pop();
+            plane_points_buf.pop();
             surf_points_buf.pop();
             message_syn_buf.push_back(std::pair<std::vector<sensor_msgs::ImuConstPtr>, std::vector<sensor_msgs::PointCloud2ConstPtr>>(imu_buf_temp, lidar_buf_temp));
             return true;
@@ -171,12 +184,15 @@ void odom_estimation(){
             ROS_WARN_ONCE("imu stamp is not synchronized! perform auto synchronization");
         }
         pcl::PointCloud<pcl::PointXYZRGBL>::Ptr edge_points_in(new pcl::PointCloud<pcl::PointXYZRGBL>());
-        pcl::PointCloud<pcl::PointXYZRGBL>::Ptr surf_points_in(new pcl::PointCloud<pcl::PointXYZRGBL>());
+        pcl::PointCloud<pcl::PointXYZRGBL>::Ptr plane_points_in(new pcl::PointCloud<pcl::PointXYZRGBL>());
+        pcl::PointCloud<pcl::PointXYZRGB>::Ptr surf_points_in(new pcl::PointCloud<pcl::PointXYZRGB>());
+
         pcl::fromROSMsg(*(message_syn_buf[0].second[0]), *edge_points_in);
-        pcl::fromROSMsg(*(message_syn_buf[0].second[1]), *surf_points_in);
+        pcl::fromROSMsg(*(message_syn_buf[0].second[1]), *plane_points_in);
+        pcl::fromROSMsg(*(message_syn_buf[0].second[2]), *surf_points_in);
 
         odom_estimator.addImuPreintegration(dt_arr, acc_arr, gyr_arr);
-        odom_estimator.addLidarFeature(edge_points_in, surf_points_in);
+        odom_estimator.addLidarFeature(edge_points_in, plane_points_in, surf_points_in);
         message_syn_buf.erase(message_syn_buf.begin());
         //globa optimization to find the pose
         if(odom_estimator.is_initialized == false){
@@ -186,7 +202,7 @@ void odom_estimation(){
             static TicToc timer("odom estimation");
             timer.tic();
             odom_estimator.optimize();
-            timer.toc(60);
+            timer.toc(10);
         }
         
         Eigen::Quaterniond q_current = Utils::so3Toq(odom_estimator.pose_r_arr.back());
@@ -224,9 +240,11 @@ int main(int argc, char **argv) {
     odom_estimator.init(file_path);
 
     ros::Subscriber sub_imu = nh.subscribe<sensor_msgs::Imu>("/camera/imu", 100, imuCallback);
-    ros::Subscriber sub_edge_cloud = nh.subscribe<sensor_msgs::PointCloud2>("/laser_cloud_edge", 100, edgeCloudHandler);
-    ros::Subscriber sub_surf_cloud = nh.subscribe<sensor_msgs::PointCloud2>("/laser_cloud_surf", 100, surfCloudHandler);
-
+    ros::Subscriber sub_edge_cloud = nh.subscribe<sensor_msgs::PointCloud2>("/laser_cloud_line", 100, edgeCloudHandler);
+    ros::Subscriber sub_plane_cloud = nh.subscribe<sensor_msgs::PointCloud2>("/laser_cloud_plane", 100,
+                                                                             planeCloudHandler);
+    ros::Subscriber sub_surf_cloud = nh.subscribe<sensor_msgs::PointCloud2>("/laser_cloud_surf", 100,
+                                                                             surfCloudHandler);
     pub_odom = nh.advertise<nav_msgs::Odometry>("/odom", 100);
 
     std::thread odom_estimation_process{odom_estimation};

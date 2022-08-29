@@ -7,7 +7,7 @@ void LaserProcessingClass::init(std::string& file_path){
     lidar_param.loadParam(file_path);
     double map_resolution = lidar_param.getLocalMapResolution();
 //    edge_downsize_filter.setLeafSize(map_resolution/4.0, map_resolution/4.0, map_resolution/4.0);
-//    surf_downsize_filter.setLeafSize(map_resolution/2.0, map_resolution/2.0, map_resolution/2.0);
+//    plane_downsize_filter.setLeafSize(map_resolution/2.0, map_resolution/2.0, map_resolution/2.0);
     edge_downsize_filter.setLeafSize(0.01, 0.01, 0.01);
     surf_downsize_filter.setLeafSize(0.1, 0.1, 0.1);
     
@@ -17,14 +17,14 @@ void LaserProcessingClass::init(std::string& file_path){
     surf_noise_filter.setMinNeighborsInRadius(14);
     num_of_plane=0;
     num_of_line=0;
-    gap_line = 2;
-    gap_plane = 4;
-    gap_surf = 4;
+    gap_line = lidar_param.gap_line;
+    gap_plane = lidar_param.gap_plane;
+    gap_surf = lidar_param.gap_surf;
 }
 
 
-void LaserProcessingClass::featureExtraction(cv::Mat& color_im, cv::Mat& depth_im, pcl::PointCloud<pcl::PointXYZRGBL>::Ptr& pc_out_edge,
-        pcl::PointCloud<pcl::PointXYZRGBL>::Ptr& pc_out_surf, pcl::PointCloud<pcl::PointXYZRGB>::Ptr& cloud_filter){
+void LaserProcessingClass::featureExtraction(cv::Mat& color_im, cv::Mat& depth_im, pcl::PointCloud<pcl::PointXYZRGBL>::Ptr& pc_out_line,
+        pcl::PointCloud<pcl::PointXYZRGBL>::Ptr& pc_out_plane, pcl::PointCloud<pcl::PointXYZRGB>::Ptr& cloud_surf, pcl::PointCloud<pcl::PointXYZRGB>::Ptr& cloud_filter){
 
 // plane filter
     struct OrganizedImage3D {
@@ -71,8 +71,8 @@ void LaserProcessingClass::featureExtraction(cv::Mat& color_im, cv::Mat& depth_i
     }
     PlaneFitter pf;
     pf.minSupport = 300;
-    pf.windowWidth = 6;
-    pf.windowHeight = 6;
+    pf.windowWidth = 10;
+    pf.windowHeight = 10;
     pf.doRefine = true;
 
     cv::Mat seg(depth_im.rows, depth_im.cols, CV_8UC3);
@@ -91,18 +91,21 @@ void LaserProcessingClass::featureExtraction(cv::Mat& color_im, cv::Mat& depth_i
             int pt_idx = vSeg[idx_plane].at(idx_idx);
             int row = pt_idx / depth_im.cols;
             int col = pt_idx % depth_im.cols;
-            pt.x = cloud_peac[row][col][0] / 1000.; //mm -> m
-            pt.y = cloud_peac[row][col][1] / 1000.;
-            pt.z = cloud_peac[row][col][2] / 1000.;
+            if(row%gap_plane==0 && col%gap_plane==0)
+            {
+                pt.x = cloud_peac[row][col][0] / 1000.; //mm -> m
+                pt.y = cloud_peac[row][col][1] / 1000.;
+                pt.z = cloud_peac[row][col][2] / 1000.;
 
-            pt.b = seg.ptr<uchar>(row)[col * 3];
-            pt.g = seg.ptr<uchar>(row)[col * 3 + 1];
-            pt.r = seg.ptr<uchar>(row)[col * 3 + 2];
-            pt.label = num_of_plane;
-            cloud->push_back(pt);
+                pt.b = seg.ptr<uchar>(row)[col * 3];
+                pt.g = seg.ptr<uchar>(row)[col * 3 + 1];
+                pt.r = seg.ptr<uchar>(row)[col * 3 + 2];
+                pt.label = num_of_plane;
+                cloud->push_back(pt);
+            }
         }
-        surf_downsize_filter.setInputCloud(cloud);
-        surf_downsize_filter.filter(*cloud);
+//        plane_downsize_filter.setInputCloud(cloud);
+//        plane_downsize_filter.filter(*cloud);
         if(cloud->size()<4) {
             continue;
         }
@@ -111,13 +114,15 @@ void LaserProcessingClass::featureExtraction(cv::Mat& color_im, cv::Mat& depth_i
         pcl::SampleConsensusModelPlane<pcl::PointXYZRGBL>::Ptr model_plane(
                 new pcl::SampleConsensusModelPlane<pcl::PointXYZRGBL>(cloud));
         pcl::RandomSampleConsensus<pcl::PointXYZRGBL> ransac(model_plane);
-        ransac.setDistanceThreshold(0.005);    //设置距离阈值，与平面距离小于0.1的点作为内点
+        ransac.setDistanceThreshold(0.02);    //设置距离阈值，与平面距离小于0.1的点作为内点
         ransac.computeModel();                //执行模型估计
         //-------------------------根据索引提取内点--------------------------
         pcl::PointCloud<pcl::PointXYZRGBL>::Ptr cloud_plane(new pcl::PointCloud<pcl::PointXYZRGBL>);
         std::vector<int> inliers;                //存储内点索引的容器
         ransac.getInliers(inliers);            //提取内点索引
         pcl::copyPointCloud<pcl::PointXYZRGBL>(*cloud, inliers, *cloud_plane);
+        if(inliers.size()/cloud->size()<0.3)
+            continue;
         *cloud_all_plane += *cloud_plane;
         num_of_plane++;
         plane_cnt++;
@@ -142,11 +147,11 @@ void LaserProcessingClass::featureExtraction(cv::Mat& color_im, cv::Mat& depth_i
     plane_num.x = static_cast<float>(plane_cnt);
     pcl::PointCloud<pcl::PointXYZRGBL>::Ptr plane_num_cloud(new pcl::PointCloud<pcl::PointXYZRGBL>);
     plane_num_cloud->push_back(plane_num);
-    *pc_out_surf = *plane_num_cloud + *plane_info_cloud + *cloud_all_plane;//num of plane + plane info + plane points
+    *pc_out_plane = *plane_num_cloud + *plane_info_cloud + *cloud_all_plane;//num of plane + plane info + plane points
 
 // line filter
-    int length_threshold = 40;
-    int distance_threshold = 4;
+    int length_threshold = 30;
+    int distance_threshold = 3;
     int canny_th1 = 50;
     int canny_th2 = 50;
     int canny_aperture_size = 3;
@@ -162,6 +167,7 @@ void LaserProcessingClass::featureExtraction(cv::Mat& color_im, cv::Mat& depth_i
     depth_im.convertTo(depth_pic_8u,CV_8U,255./9000.);
     std::vector<cv::Vec4f> lines_fld;
     fld->detect(depth_pic_8u, lines_fld);
+
     pcl::PointCloud<pcl::PointXYZRGBL>::Ptr cloud_all_line(new pcl::PointCloud<pcl::PointXYZRGBL>);
     pcl::PointCloud<pcl::PointXYZRGBL>::Ptr line_info_cloud(new pcl::PointCloud<pcl::PointXYZRGBL>);
     int line_cnt = 0;
@@ -169,25 +175,31 @@ void LaserProcessingClass::featureExtraction(cv::Mat& color_im, cv::Mat& depth_i
     {
         cv::Vec4i l = lines_fld[i];
         cv::LineIterator lit(depth_im, cv::Point(l[0],l[1]), cv::Point(l[2],l[3]));//todo Note
+        line(seg, cv::Point(l[0], l[1]), cv::Point(l[2], l[3]), cv::Scalar(255,255,255), 3);
         pcl::PointCloud<pcl::PointXYZRGBL>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGBL>);
+        int gap_line_tmp = gap_line;
+        if(lit.count<gap_line*2)
+            gap_line_tmp = gap_line/3;
         for(int i = 0; i < lit.count; ++i, ++lit)
         {
-            int col = lit.pos().x;
-            int row = lit.pos().y;
-            pcl::PointXYZRGBL pt;
-            pt.x = cloud_peac[row][col][0]/1000.; //mm -> m
-            pt.y = cloud_peac[row][col][1]/1000.;
-            pt.z = cloud_peac[row][col][2]/1000.;
-            if(pt.z == 0.0)
-                continue;
-            pt.b = color_im.ptr<uchar>(row)[col*3];
-            pt.g = color_im.ptr<uchar>(row)[col*3+1];
-            pt.r = color_im.ptr<uchar>(row)[col*3+2];
-            pt.label = num_of_line;
-            cloud->push_back(pt);
+            if(i%gap_line_tmp==0) {
+                int col = lit.pos().x;
+                int row = lit.pos().y;
+                pcl::PointXYZRGBL pt;
+                pt.x = cloud_peac[row][col][0] / 1000.; //mm -> m
+                pt.y = cloud_peac[row][col][1] / 1000.;
+                pt.z = cloud_peac[row][col][2] / 1000.;
+                if(pt.z==0.)
+                    continue;
+                pt.b = color_im.ptr<uchar>(row)[col * 3];
+                pt.g = color_im.ptr<uchar>(row)[col * 3 + 1];
+                pt.r = color_im.ptr<uchar>(row)[col * 3 + 2];
+                pt.label = num_of_line;
+                cloud->push_back(pt);
+            }
         }
-        edge_downsize_filter.setInputCloud(cloud);
-        edge_downsize_filter.filter(*cloud);
+//        edge_downsize_filter.setInputCloud(cloud);
+//        edge_downsize_filter.filter(*cloud);
         if(cloud->size()<4)
             continue;
         num_of_line++;
@@ -195,7 +207,7 @@ void LaserProcessingClass::featureExtraction(cv::Mat& color_im, cv::Mat& depth_i
         //-----------------------------拟合直线-----------------------------
         pcl::SampleConsensusModelLine<pcl::PointXYZRGBL>::Ptr model_line(new pcl::SampleConsensusModelLine<pcl::PointXYZRGBL>(cloud));
         pcl::RandomSampleConsensus<pcl::PointXYZRGBL> ransac(model_line);
-        ransac.setDistanceThreshold(0.005);	//内点到模型的最大距离
+        ransac.setDistanceThreshold(0.1);	//内点到模型的最大距离
         ransac.setMaxIterations(1000);		//最大迭代次数
         ransac.computeModel();				//直线拟合
         //--------------------------根据索引提取内点------------------------
@@ -250,9 +262,26 @@ void LaserProcessingClass::featureExtraction(cv::Mat& color_im, cv::Mat& depth_i
     line_num.x = static_cast<float>(line_cnt);
     pcl::PointCloud<pcl::PointXYZRGBL>::Ptr line_num_cloud(new pcl::PointCloud<pcl::PointXYZRGBL>);
     line_num_cloud->push_back(line_num);
-    *pc_out_edge = *line_num_cloud + *line_info_cloud + *cloud_all_line;
+    *pc_out_line = *line_num_cloud + *line_info_cloud + *cloud_all_line;
 //    cout << "The number of lines is "<<line_cnt<<endl;
 //    cout << "The number of lines points are "<<cloud_all_line->size()<<endl;
+
+    for (int m = 0; m < depth_im.rows; m+=gap_surf){
+        for (int n = 0; n < depth_im.cols; n+=gap_surf){
+            if(seg.at<cv::Vec3b>(m,n)==cv::Vec3b(0,0,0)){
+                pcl::PointXYZRGB pt;
+                pt.x = cloud_peac[m][n][0] / 1000.; //mm -> m
+                pt.y = cloud_peac[m][n][1] / 1000.;
+                pt.z = cloud_peac[m][n][2] / 1000.;
+                pt.b = color_im.ptr<uchar>(m)[n * 3];
+                pt.g = color_im.ptr<uchar>(m)[n * 3 + 1];
+                pt.r = color_im.ptr<uchar>(m)[n * 3 + 2];
+                cloud_surf->points.push_back(pt);
+            }
+        }
+    }
+    surf_noise_filter.setInputCloud(cloud_surf);
+    surf_noise_filter.filter(*cloud_surf);
 
 }
 

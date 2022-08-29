@@ -36,8 +36,10 @@ LaserProcessingClass laserProcessing;
 std::mutex mutex_lock;
 std::queue<sensor_msgs::PointCloud2ConstPtr> pointCloudBuf;
 
-ros::Publisher pubEdgePoints;
+ros::Publisher pubLinePoints;
+ros::Publisher pubPlanePoints;
 ros::Publisher pubSurfPoints;
+
 ros::Publisher pubLaserCloudFiltered;
 
 void velodyneHandler(const sensor_msgs::PointCloud2ConstPtr &laserCloudMsg)
@@ -51,7 +53,9 @@ void RGBDHandler(const sensor_msgs::ImageConstPtr& msgRGB,const sensor_msgs::Ima
 {
 
     //read data
-    laserProcessing.frame_count++;
+//    laserProcessing.frame_count++;
+//    if(laserProcessing.frame_count%3!=0)
+//        return;
     cv_bridge::CvImagePtr color_ptr, depth_ptr;
     cv::Mat color_pic, depth_pic;
     color_ptr = cv_bridge::toCvCopy(msgRGB, sensor_msgs::image_encodings::BGR8);
@@ -81,11 +85,12 @@ void RGBDHandler(const sensor_msgs::ImageConstPtr& msgRGB,const sensor_msgs::Ima
 //        }
 //    }
     pcl::PointCloud<pcl::PointXYZRGBL>::Ptr pointcloud_edge(new pcl::PointCloud<pcl::PointXYZRGBL>());
-    pcl::PointCloud<pcl::PointXYZRGBL>::Ptr pointcloud_surf(new pcl::PointCloud<pcl::PointXYZRGBL>());
+    pcl::PointCloud<pcl::PointXYZRGBL>::Ptr cloud_plane(new pcl::PointCloud<pcl::PointXYZRGBL>());
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_filter ( new pcl::PointCloud<pcl::PointXYZRGB> ());
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_surf ( new pcl::PointCloud<pcl::PointXYZRGB> ());
     static TicToc timer("laser processing");
     timer.tic();
-    laserProcessing.featureExtraction(color_pic,depth_pic, pointcloud_edge, pointcloud_surf, cloud_filter);
+    laserProcessing.featureExtraction(color_pic, depth_pic, pointcloud_edge, cloud_plane, cloud_surf, cloud_filter);
     timer.toc(60);
 
     ros::Time pointcloud_time = msgRGB->header.stamp;
@@ -95,14 +100,20 @@ void RGBDHandler(const sensor_msgs::ImageConstPtr& msgRGB,const sensor_msgs::Ima
     laserCloudFilteredMsg.header.frame_id = "camera_depth_optical_frame";
     pubLaserCloudFiltered.publish(laserCloudFilteredMsg);
 
-    sensor_msgs::PointCloud2 edgePointsMsg;
-    pcl::toROSMsg(*pointcloud_edge, edgePointsMsg);
-    edgePointsMsg.header.stamp = pointcloud_time;
-    edgePointsMsg.header.frame_id = "camera_depth_optical_frame";
-    pubEdgePoints.publish(edgePointsMsg);
+    sensor_msgs::PointCloud2 LinePointsMsg;
+    pcl::toROSMsg(*pointcloud_edge, LinePointsMsg);
+    LinePointsMsg.header.stamp = pointcloud_time;
+    LinePointsMsg.header.frame_id = "camera_depth_optical_frame";
+    pubLinePoints.publish(LinePointsMsg);
+
+    sensor_msgs::PointCloud2 PlanePointsMsg;
+    pcl::toROSMsg(*cloud_plane, PlanePointsMsg);
+    PlanePointsMsg.header.stamp = pointcloud_time;
+    PlanePointsMsg.header.frame_id = "camera_depth_optical_frame";
+    pubPlanePoints.publish(PlanePointsMsg);
 
     sensor_msgs::PointCloud2 surfPointsMsg;
-    pcl::toROSMsg(*pointcloud_surf, surfPointsMsg);
+    pcl::toROSMsg(*cloud_surf, surfPointsMsg);
     surfPointsMsg.header.stamp = pointcloud_time;
     surfPointsMsg.header.frame_id = "camera_depth_optical_frame";
     pubSurfPoints.publish(surfPointsMsg);
@@ -125,7 +136,8 @@ int main(int argc, char **argv)
     sync.registerCallback(boost::bind(&RGBDHandler, _1, _2));
 
     pubLaserCloudFiltered = nh.advertise<sensor_msgs::PointCloud2>("/laser_cloud_filtered", 100);
-    pubEdgePoints = nh.advertise<sensor_msgs::PointCloud2>("/laser_cloud_edge", 100);
+    pubLinePoints = nh.advertise<sensor_msgs::PointCloud2>("/laser_cloud_line", 100);
+    pubPlanePoints = nh.advertise<sensor_msgs::PointCloud2>("/laser_cloud_plane", 100);
     pubSurfPoints = nh.advertise<sensor_msgs::PointCloud2>("/laser_cloud_surf", 100);
 
     ros::Rate loop_rate(40);

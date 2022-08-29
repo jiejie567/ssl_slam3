@@ -29,7 +29,7 @@ lidar:
     odom_n_xyz: 6.0e-2
     local_map_resolution: 0.05
     local_map_size: 10.0
-    edge_n: 1.0e-2
+    edge_n: 1.0e-3
     surf_n: 1.0e-2
 
     # mapping thread
@@ -41,11 +41,14 @@ lidar:
     map_cell_height_range: 4
     map_cell_depth_range: 4
 
+    gap_plane: 20
+    gap_line: 3
+    gap_surf: 30
 imu:
     # note that we follow the value unit from kalibr  link:https://github.com/ethz-asl/kalibr/wiki/IMU-Noise-Model
     # if you use imu_utils, the result is in discrete time, you can simply set frequency to 1
     frequency: 200
-    acc_n: 1.176e-2   # 1.176e-2m/s^2 * 1/sqrt(Hz) continuous time
+    acc_n: 9.176e-1   # 1.176e-2m/s^2 * 1/sqrt(Hz) continuous time
     gyr_n: 2.443e-3  # 2.443e-3rad/s * 1/sqrt(Hz) continuous time
     acc_w: 1.0e-1   # 1.0e-1  m/s^3 * 1/sqrt(Hz) continuous time
     gyr_w: 1.0e-4   # 1.0e-4 rad/s^2 * 1/sqrt(Hz) continuous time

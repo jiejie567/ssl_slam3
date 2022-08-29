@@ -51,7 +51,32 @@ bool LidarOdometryFactor::Evaluate(double const *const *parameters, double *resi
     }
     return true;
 }
+LidarSurfFactor::LidarSurfFactor(Eigen::Vector3d curr_point_in, Eigen::Vector3d plane_unit_norm_in, double negative_OA_dot_norm_in, double covariance_in){
+    curr_point = curr_point_in;
+    plane_unit_norm = plane_unit_norm_in;
+    negative_OA_dot_norm = negative_OA_dot_norm_in;
+    sqrt_info = 1.0 / covariance_in;
+}
 
+bool LidarSurfFactor::Evaluate(double const *const *parameters, double *residuals, double **jacobians) const {
+    Eigen::Vector3d ri(parameters[0][0], parameters[0][1], parameters[0][2]);
+    Eigen::Vector3d Pi(parameters[0][3], parameters[0][4], parameters[0][5]);
+    Eigen::Matrix3d Ri = Utils::so3ToR(ri);
+    Eigen::Vector3d lp = Ri * curr_point + Pi;
+    residuals[0] = sqrt_info * (plane_unit_norm.dot(lp) + negative_OA_dot_norm);
+
+    if(jacobians != NULL){
+        if(jacobians[0] != NULL){
+            Eigen::Matrix<double, 3, 15> dp_by_so3xyz = Eigen::Matrix<double, 3, 15>::Zero();
+            dp_by_so3xyz.block<3,3>(0, 0) = - Ri * Utils::skew(curr_point);
+            dp_by_so3xyz.block<3,3>(0, 3) = Eigen::Matrix3d::Identity();
+            Eigen::Map<Eigen::Matrix<double, 1, 15, Eigen::RowMajor> > jacobian_i(jacobians[0]);
+            jacobian_i.setZero();
+            jacobian_i = sqrt_info * plane_unit_norm.transpose() * dp_by_so3xyz;
+        }
+    }
+    return true;
+}
 LidarEdgeFactor::LidarEdgeFactor(Eigen::Vector3d curr_point_in, Eigen::Vector3d last_point_a_in, Eigen::Vector3d last_point_b_in, double covariance_in){
     curr_point = curr_point_in; 
     last_point_a = last_point_a_in;
@@ -178,3 +203,5 @@ bool LidarPlaneFactor::Evaluate(double const *const *parameters, double *residua
     }
     return true;
 }
+
+

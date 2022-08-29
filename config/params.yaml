@@ -18,10 +18,10 @@ common:
 lidar:
     frequency: 30
     camera_factor: 1000.0
-    camera_cx: 333.891
-    camera_cy: 254.687
-    camera_fx: 597.53
-    camera_fy: 597.795
+    camera_cx: 330.275
+    camera_cy: 266.435
+    camera_fx: 594.196
+    camera_fy: 595.270
     min_distance: 0.25
     max_distance: 9.0
     horizontal_angle: 70.0
@@ -30,7 +30,8 @@ lidar:
     local_map_resolution: 0.05
     local_map_size: 10.0
     edge_n: 1.0e-2
-    surf_n: 1.0e-1
+    plane_n: 1.0e-2
+    surf_n: 1.0e-2
 
     # mapping thread
     map_resolution: 0.02
@@ -40,6 +41,10 @@ lidar:
     map_cell_width_range: 4
     map_cell_height_range: 4
     map_cell_depth_range: 4
+
+    gap_plane: 30
+    gap_line: 6
+    gap_surf: 10
 
 imu:
     # note that we follow the value unit from kalibr  link:https://github.com/ethz-asl/kalibr/wiki/IMU-Noise-Model

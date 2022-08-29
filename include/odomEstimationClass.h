@@ -48,9 +48,11 @@ class OdomEstimationClass{
 		OdomEstimationClass();
 		void init(std::string& file_path);
 		bool initialize(void);
-		void initMapWithPoints(const pcl::PointCloud<pcl::PointXYZRGBL>::Ptr edge_in, const pcl::PointCloud<pcl::PointXYZRGBL>::Ptr surf_in);
+		void initMapWithPoints(const pcl::PointCloud<pcl::PointXYZRGBL>::Ptr edge_in, const pcl::PointCloud<pcl::PointXYZRGBL>::Ptr plane_in,
+                               const pcl::PointCloud<pcl::PointXYZRGB>::Ptr surf_in);
 		void addImuPreintegration(std::vector<double> dt_arr, std::vector<Eigen::Vector3d> acc_arr, std::vector<Eigen::Vector3d> gyr_arr);
-		void addLidarFeature(const pcl::PointCloud<pcl::PointXYZRGBL>::Ptr edge_in, const pcl::PointCloud<pcl::PointXYZRGBL>::Ptr surf_in);
+		void addLidarFeature(const pcl::PointCloud<pcl::PointXYZRGBL>::Ptr edge_in, const pcl::PointCloud<pcl::PointXYZRGBL>::Ptr plane_in,
+                             const pcl::PointCloud<pcl::PointXYZRGB>::Ptr surf_in);
 		void optimize(void);
 
 	private:
@@ -60,12 +62,16 @@ class OdomEstimationClass{
 
 		// map points
 		pcl::PointCloud<pcl::PointXYZRGBL>::Ptr edge_map;
-		pcl::PointCloud<pcl::PointXYZRGBL>::Ptr surf_map;
-		pcl::PointCloud<pcl::PointXYZRGBL>::Ptr current_edge_points;
-		pcl::PointCloud<pcl::PointXYZRGBL>::Ptr current_surf_points;
+		pcl::PointCloud<pcl::PointXYZRGBL>::Ptr plane_map;
+        pcl::PointCloud<pcl::PointXYZRGB>::Ptr surf_map;
+
+        pcl::PointCloud<pcl::PointXYZRGBL>::Ptr current_edge_points;
+		pcl::PointCloud<pcl::PointXYZRGBL>::Ptr current_plane_points;
+        pcl::PointCloud<pcl::PointXYZRGB>::Ptr current_surf_points;
 
 
-        //plane
+
+    //plane
         int current_plane_num;
 		std::vector<Eigen::Vector4d> *pv_plane_info;
         std::vector<double> *pv_plane_believe_rate;
@@ -89,9 +95,11 @@ class OdomEstimationClass{
 
     // kdtree for fast indexing
 		pcl::KdTreeFLANN<pcl::PointXYZRGBL> edge_kd_tree;
-		pcl::KdTreeFLANN<pcl::PointXYZRGBL> surf_kd_tree;
+		pcl::KdTreeFLANN<pcl::PointXYZRGBL> plane_kd_tree;
+        pcl::KdTreeFLANN<pcl::PointXYZRGB> surf_kd_tree;
 
-		//pose
+
+    //pose
         Eigen::Isometry3d last_pose;
         Eigen::Isometry3d current_pose;
 
@@ -99,12 +107,16 @@ class OdomEstimationClass{
 
     // points downsampling before add to map
 		pcl::VoxelGrid<pcl::PointXYZRGBL> edge_downsize_filter;
-		pcl::VoxelGrid<pcl::PointXYZRGBL> surf_downsize_filter;
-		
-		void addLineCost(ceres::Problem& problem, ceres::LossFunction *loss_function, double* pose);
+		pcl::VoxelGrid<pcl::PointXYZRGBL> plane_downsize_filter;
+        pcl::VoxelGrid<pcl::PointXYZRGB> surf_downsize_filter;
+
+
+        void addLineCost(ceres::Problem& problem, ceres::LossFunction *loss_function, double* pose);
 		void addEdgeCost(ceres::Problem& problem, ceres::LossFunction *loss_function, double* pose);
-		void addSurfCost(ceres::Problem& problem, ceres::LossFunction *loss_function, double* pose);
-		void addOdometryCost(const Eigen::Isometry3d& odom, ceres::Problem& problem, ceres::LossFunction *loss_function, double* pose1, double* pose2);
+        void addSurfCost(ceres::Problem& problem, ceres::LossFunction *loss_function, double* pose);
+        void addplaneCost(ceres::Problem& problem, ceres::LossFunction *loss_function, double* pose);
+        void addplane2Cost(ceres::Problem& problem, ceres::LossFunction *loss_function, double* pose);
+        void addOdometryCost(const Eigen::Isometry3d& odom, ceres::Problem& problem, ceres::LossFunction *loss_function, double* pose1, double* pose2);
 		void addImuCost(ImuPreintegrationClass& imu_integrator, ceres::Problem& problem, ceres::LossFunction *loss_function, double* pose1, double* pose2);
 		void updateLocalMap(Eigen::Isometry3d& transform);
 };
