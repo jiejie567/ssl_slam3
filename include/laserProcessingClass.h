@@ -4,7 +4,6 @@
 
 #ifndef _LASER_PROCESSING_CLASS_H_
 #define _LASER_PROCESSING_CLASS_H_
-
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 
@@ -27,6 +26,9 @@
 #include "param.h"
 #include <ros/ros.h>
 #include "AHCPlaneFitter.hpp"
+#include "yolox_openvino.h"
+
+//#include "YoloDetect.h"
 
 //points covariance class
 class Double2d{
@@ -47,9 +49,10 @@ class PointsInfo{
 class LaserProcessingClass {
     public:
     	LaserProcessingClass(){};
-		void init(std::string& file_path);
+		void init(std::string& file_path,std::string& yolo_path);
         void featureExtraction(cv::Mat& color_im,cv::Mat& depth_im, pcl::PointCloud<pcl::PointXYZRGBL>::Ptr& pc_out_line,
                 pcl::PointCloud<pcl::PointXYZRGBL>::Ptr& pc_out_surf,pcl::PointCloud<pcl::PointXYZRGB>::Ptr& cloud_surf, pcl::PointCloud<pcl::PointXYZRGB>::Ptr& cloud_filter);
+        void yoloXDetect(const cv::Mat& bgr,std::vector<Object>& objects);
         int frame_count;
         LidarParam lidar_param;
     private:
@@ -62,6 +65,15 @@ class LaserProcessingClass {
         int gap_plane;
         int gap_line;
         int gap_surf;
+        //yolox
+        Core ie;
+        CNNNetwork network;
+        ExecutableNetwork executable_network;
+        InferRequest infer_request;
+        InputInfo::Ptr input_info;
+        std::string input_name;
+        std::string output_name;
+
 };
 
 #endif // _LASER_PROCESSING_CLASS_H_

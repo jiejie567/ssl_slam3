@@ -73,9 +73,11 @@ class OdomEstimationClass{
 
     //plane
         int current_plane_num;
+        std::map<int,Eigen::Vector4d> *pm_plane_info;
 		std::vector<Eigen::Vector4d> *pv_plane_info;
         std::vector<double> *pv_plane_believe_rate;
         std::vector<Eigen::Vector4d> v_current_plane_info;
+        std::vector<int> v_current_plane_idx;
         std::vector<int> v_current_plane_points_num;
         std::vector<double> v_current_plane_believe_rate;
         //line

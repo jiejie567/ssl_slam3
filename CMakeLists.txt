@@ -1,9 +1,10 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(ssl_slam3)
-add_definitions(-w)
+#add_definitions(-w)
 set(CMAKE_BUILD_TYPE "Release")
-set(CMAKE_CXX_STANDARD 11)
-set(CMAKE_CXX_FLAGS_RELEASE "-O3 -Wall -g")
+set(CMAKE_CXX_STANDARD 14)
+#set(CMAKE_CXX_FLAGS_RELEASE "-O3 -Wall -g")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${TORCH_CXX_FLAGS}")
 
 find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
@@ -26,6 +27,8 @@ find_package(OpenCV REQUIRED)
 find_package(PCL REQUIRED)
 find_package(Ceres REQUIRED)
 find_package(octomap REQUIRED)
+find_package(InferenceEngine REQUIRED)
+find_package(ngraph REQUIRED)
 
 include_directories(
   include
@@ -35,12 +38,16 @@ include_directories(
   ${CERES_INCLUDE_DIRS}
   ${EIGEN3_INCLUDE_DIRS}
   ${OCTOMAP_INCLUDE_DIRS}
+  ${Torch_INCLUDE_DIRS}
+  ${CMAKE_CURRENT_SOURCE_DIR}
+  ${CMAKE_CURRENT_BINARY_DIR}
 )
 
 link_directories(
   include
   ${PCL_LIBRARY_DIRS}
   ${CERES_LIBRARY_DIRS}
+    ${NGRAPH_LIBRARIES}
 )
 
 catkin_package(
@@ -49,8 +56,9 @@ catkin_package(
   INCLUDE_DIRS include
 )
 
-add_executable(ssl_slam3_laser_processing_node src/laserProcessingNode.cpp src/laserProcessingClass.cpp src/param.cpp src/utils.cpp)
-target_link_libraries(ssl_slam3_laser_processing_node ${EIGEN3_LIBRARIES} ${catkin_LIBRARIES} ${PCL_LIBRARIES} ${CERES_LIBRARIES} ${OpenCV_LIBS})
+add_executable(ssl_slam3_laser_processing_node  src/laserProcessingNode.cpp src/laserProcessingClass.cpp src/param.cpp src/utils.cpp )
+target_link_libraries(ssl_slam3_laser_processing_node ${EIGEN3_LIBRARIES} ${catkin_LIBRARIES} ${PCL_LIBRARIES} ${CERES_LIBRARIES} ${OpenCV_LIBS} ${InferenceEngine_LIBRARIES}
+        ${NGRAPH_LIBRARIES})
 
 add_executable(ssl_slam3_odom_estimation_node src/utils.cpp src/odomEstimationNode.cpp src/param.cpp src/odomEstimationClass.cpp src/imuOptimizationFactor.cpp src/lidarOptimizationFactor.cpp src/imuPreintegrationClass.cpp src/param.cpp src/poseOptimizationFactor.cpp)
 target_link_libraries(ssl_slam3_odom_estimation_node ${EIGEN3_LIBRARIES} ${catkin_LIBRARIES} ${PCL_LIBRARIES} ${CERES_LIBRARIES} ${OpenCV_LIBS})

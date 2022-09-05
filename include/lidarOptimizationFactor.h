@@ -73,9 +73,9 @@ struct NumericDiffCostFunctor {
     double sqrt_info;
     int quantity_plane_matched_;
 
-    NumericDiffCostFunctor(Eigen::Vector4d current_plane_hessian, Eigen::Vector4d traget_plane_hessian, int quantity_plane_matched, double covariance_in){
+    NumericDiffCostFunctor(Eigen::Vector4d current_plane_hessian, Eigen::Vector4d traget_plane_hessian, double quantity_plane_matched, double covariance_in){
         current_plane_hessian_ = current_plane_hessian;
-        target_plane_hessian_ =traget_plane_hessian;
+        target_plane_hessian_ = traget_plane_hessian;
         quantity_plane_matched_ = quantity_plane_matched;
         sqrt_info = 1.0 /covariance_in;
     }
@@ -88,10 +88,23 @@ struct NumericDiffCostFunctor {
         Eigen::Vector3d plane_n_transed = Ri*plane_n;
         auto pi_transepose = Pi.transpose();
         double plane_d_transed = -pi_transepose*plane_n_transed+plane_d;
+        if(plane_d_transed<0)
+        {
+            plane_d_transed = -plane_d_transed;
+            plane_n_transed = -plane_n_transed;
+        }
         Eigen::Vector3d current_plane_closest_point = plane_n_transed*plane_d_transed;
         Eigen::Vector3d target_plane_closest_point = target_plane_hessian_.head(3)*target_plane_hessian_[3];
-        Eigen::Map<Eigen::Matrix<double, 3, 1> > residuals_i(residuals);
-        residuals_i =  sqrt_info*quantity_plane_matched_*(current_plane_closest_point-target_plane_closest_point);
+
+        Eigen::Isometry3d T_wb = Eigen::Isometry3d::Identity();
+        T_wb.linear() = Utils::so3ToR(Eigen::Vector3d(parameters[0],parameters[1],parameters[2]));
+        T_wb.translation() = Eigen::Vector3d(parameters[3],parameters[4],parameters[5]);
+
+//        residuals[0] = sqrt_info*quantity_plane_matched_*(T_wb.matrix().transpose().inverse()*current_plane_hessian_-target_plane_hessian_).norm();
+
+//        residuals[0] = sqrt_info*quantity_plane_matched_*(current_plane_closest_point-target_plane_closest_point).norm();
+        Eigen::Map<Eigen::Matrix<double, 1, 1> > residuals_i(residuals);
+        residuals_i[0] =  sqrt_info*quantity_plane_matched_*(current_plane_closest_point-target_plane_closest_point).norm();
         return true;
     }
 };

@@ -10,27 +10,31 @@ common:
        rows: 4
        cols: 4
        dt: d
-       data: [1.0, 0.0, 0.0, 0.0,
-              0.0, 1.0, 0.0, 0.0,
-              0.0, 0.0, 1.0, 0.0,
+       data: [-0.9995, -0.026, 0.0177, 0.0073,
+              -0.026, 0.9997, 0.0002, -0.0071,
+              -0.0177, -0.0003, -0.9998, -0.0454,
               0.0, 0.0, 0.0, 1.0]
 
 lidar:  
     frequency: 30 
     camera_factor: 1000.0
-    camera_cx: 322.316345214844
-    camera_cy: 243.540222167969
-    camera_fx: 382.260070800781
-    camera_fy: 381.830932617188
-    min_distance: 0.6
-    max_distance: 4.0
+    camera_cx: 330.27465148068853
+    camera_cy: 266.4348550024963
+    camera_fx: 594.1964488651923
+    camera_fy: 595.2700130035521
+    min_distance: 0.25
+    max_distance: 9.0
     horizontal_angle: 70.0
-    odom_n_rpy: 6.0e-2
-    odom_n_xyz: 6.0e-2
+    odom_n_rpy: 1.0e-2        
+    odom_n_xyz: 1.0e-2
     local_map_resolution: 0.05
     local_map_size: 10.0
     edge_n: 1.0e-2
     surf_n: 1.0e-2
+
+    gap_plane: 30
+    gap_line: 5
+    gap_surf: 10
 
     # mapping thread
     map_resolution: 0.04
@@ -41,15 +45,12 @@ lidar:
     map_cell_height_range: 4
     map_cell_depth_range: 4
 
-    gap_plane: 25
-    gap_line: 6
-    gap_surf: 30
 imu:
     # note that we follow the value unit from kalibr  link:https://github.com/ethz-asl/kalibr/wiki/IMU-Noise-Model
     # if you use imu_utils, the result is in discrete time, you can simply set frequency to 1
-    frequency: 200
-    acc_n: 1.176e-1   # 1.176e-2m/s^2 * 1/sqrt(Hz) continuous time
-    gyr_n: 2.443e-3  # 2.443e-3rad/s * 1/sqrt(Hz) continuous time
-    acc_w: 1.0e-1   # 1.0e-1  m/s^3 * 1/sqrt(Hz) continuous time
-    gyr_w: 1.0e-4   # 1.0e-4 rad/s^2 * 1/sqrt(Hz) continuous time
+    frequency: 100
+    acc_n: 1.3612506174840002e-01   # 1.176e-2m/s^2 * 1/sqrt(Hz) continuous time
+    gyr_n: 1.7549291202140832e-02  # 2.443e-3rad/s * 1/sqrt(Hz) continuous time
+    acc_w: 2.4764545673383180e-04   # 1.0e-1  m/s^3 * 1/sqrt(Hz) continuous time
+    gyr_w: 1.3980924728458700e-05   # 1.0e-4 rad/s^2 * 1/sqrt(Hz) continuous time
 

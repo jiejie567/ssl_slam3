@@ -1,7 +1,6 @@
 // Author of SSL_SLAM3: Wang Han 
 // Email wh200720041@gmail.com
 // Homepage https://wanghan.pro
-
 //c++ lib
 #include <cmath>
 #include <vector>
@@ -31,6 +30,7 @@
 #include "utils.h"
 #include "param.h"
 #include "laserProcessingClass.h"
+//#include "torch/script.h"
 
 LaserProcessingClass laserProcessing;
 std::mutex mutex_lock;
@@ -54,7 +54,7 @@ void RGBDHandler(const sensor_msgs::ImageConstPtr& msgRGB,const sensor_msgs::Ima
 
     //read data
 //    laserProcessing.frame_count++;
-//    if(laserProcessing.frame_count%3!=0)
+//    if(laserProcessing.frame_count%5!=0)
 //        return;
     cv_bridge::CvImagePtr color_ptr, depth_ptr;
     cv::Mat color_pic, depth_pic;
@@ -63,27 +63,6 @@ void RGBDHandler(const sensor_msgs::ImageConstPtr& msgRGB,const sensor_msgs::Ima
     depth_ptr = cv_bridge::toCvCopy(msgD, sensor_msgs::image_encodings::TYPE_32FC1);
     depth_pic = depth_ptr->image;
 
-//    double ThMaxDepth = laserProcessing.lidar_param.max_distance * laserProcessing.lidar_param.camera_factor;
-//    double ThMinDepth = laserProcessing.lidar_param.min_distance * laserProcessing.lidar_param.camera_factor;
-//    for (int m = 0; m < depth_pic.rows; m++){
-//        for (int n = 0; n < depth_pic.cols; n++){
-//            if(depth_pic.ptr<float>(m)[n] <  ThMinDepth ||
-//            depth_pic.ptr<float>(m)[n] > ThMaxDepth)
-//                depth_pic.ptr<float>(m)[n] = 0.;//depth filter
-//            float d = depth_pic.ptr<float>(m)[n];//ushort d = depth_pic.ptr<ushort>(m)[n];
-//            if (d == 0.)
-//                continue;
-//            pcl::PointXYZRGB p;
-//            p.z = double(d) /  laserProcessing.lidar_param.camera_factor;
-//            p.x = (n - laserProcessing.lidar_param.camera_cx) * p.z / laserProcessing.lidar_param.camera_fx;
-//            p.y = (m - laserProcessing.lidar_param.camera_cy) * p.z / laserProcessing.lidar_param.camera_fy;
-//
-//            p.b = color_pic.ptr<uchar>(m)[n*3];
-//            p.g = color_pic.ptr<uchar>(m)[n*3+1];
-//            p.r = color_pic.ptr<uchar>(m)[n*3+2];
-//            cloud->points.push_back( p );
-//        }
-//    }
     pcl::PointCloud<pcl::PointXYZRGBL>::Ptr pointcloud_edge(new pcl::PointCloud<pcl::PointXYZRGBL>());
     pcl::PointCloud<pcl::PointXYZRGBL>::Ptr cloud_plane(new pcl::PointCloud<pcl::PointXYZRGBL>());
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_filter ( new pcl::PointCloud<pcl::PointXYZRGB> ());
@@ -91,7 +70,7 @@ void RGBDHandler(const sensor_msgs::ImageConstPtr& msgRGB,const sensor_msgs::Ima
     static TicToc timer("laser processing");
     timer.tic();
     laserProcessing.featureExtraction(color_pic, depth_pic, pointcloud_edge, cloud_plane, cloud_surf, cloud_filter);
-    timer.toc(60);
+    timer.toc(10);
 
     ros::Time pointcloud_time = msgRGB->header.stamp;
     sensor_msgs::PointCloud2 laserCloudFilteredMsg;
@@ -126,8 +105,10 @@ int main(int argc, char **argv)
     ros::NodeHandle nh;
 
     std::string file_path;
-    nh.getParam("/file_path", file_path); 
-    laserProcessing.init(file_path);
+    std::string yolo_path;
+    nh.getParam("/file_path", file_path);
+    nh.getParam("/yolox_xml_path",yolo_path);
+    laserProcessing.init(file_path,yolo_path);
 
     message_filters::Subscriber<sensor_msgs::Image> rgb_sub(nh, "/camera/color/image_raw", 1);
     message_filters::Subscriber<sensor_msgs::Image> depth_sub(nh, "/camera/aligned_depth_to_color/image_raw", 1);
@@ -140,7 +121,7 @@ int main(int argc, char **argv)
     pubPlanePoints = nh.advertise<sensor_msgs::PointCloud2>("/laser_cloud_plane", 100);
     pubSurfPoints = nh.advertise<sensor_msgs::PointCloud2>("/laser_cloud_surf", 100);
 
-    ros::Rate loop_rate(40);
+    ros::Rate loop_rate(30);
     while (ros::ok())
     {
         ros::spinOnce();

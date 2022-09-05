@@ -27,7 +27,7 @@ void LaserMappingClass::init(std::string& file_path){
 	map_depth = lidar_param.getMapCellDepthRange()*2+1;
 
 	//downsampling size
-	double map_resolution = lidar_param.getMapResolution();
+	double map_resolution = lidar_param.getMapResolution()/2;
 	downSizeFilter.setLeafSize(map_resolution, map_resolution, map_resolution);
 }
 
@@ -151,9 +151,9 @@ void LaserMappingClass::checkPoints(int& x, int& y, int& z){
 void LaserMappingClass::noiseFilter(const pcl::PointCloud<pcl::PointXYZRGB>::Ptr& pc_in, pcl::PointCloud<pcl::PointXYZRGB>::Ptr& pc_out){
     //manually remove ceiling, you can remove this part if use for other cases
     pcl::CropBox<pcl::PointXYZRGB> crop_box_filter;
-    crop_box_filter.setMin(Eigen::Vector4f(-10.0, -0.8, -10.0, 1.0));
-    crop_box_filter.setMax(Eigen::Vector4f(10.0, 10.0, 10.0, 1.0));
-    crop_box_filter.setNegative(false);    
+    crop_box_filter.setMin(Eigen::Vector4f(-10.0, -10, -10.0, 1.0));
+    crop_box_filter.setMax(Eigen::Vector4f(10.0, 10, 10.0, 1.0));
+    crop_box_filter.setNegative(false);
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr pc_without_ceiling(new pcl::PointCloud<pcl::PointXYZRGB>());
     crop_box_filter.setInputCloud(pc_in);
     crop_box_filter.filter(*pc_without_ceiling);
