@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <launch>
-    <node pkg="rosbag" type="play" name="rosbag_play" args="--clock -r 1 /home/bit-hit/下载/Dataset/Imu_Depth_Color_Points.bag"/>
+    <node pkg="rosbag" type="play" name="rosbag_play" args="--clock -r 1 /home/jeff/Downloads/Imu_Depth_Color_Points.bag"/>
     <param name="/use_sim_time" value="true" />
 
     <node pkg="tf" type="static_transform_publisher" name="word2map_tf"  args="0 0 0 1.57 3.14 1.57 /world /map 100" />
@@ -13,7 +13,6 @@
     </include>
      -->
     <param name="file_path" value="$(find ssl_slam3)/config/params.yaml"/>
-    <param name="yolox_xml_path" value="/home/bit-hit/ssl3-8.24_ws/src/ssl_slam3/yoloX/yolox_nano.xml"/>
 
     <node pkg="ssl_slam3" type="ssl_slam3_laser_processing_node" name="ssl_slam3_laser_processing_node" output="screen" />
     <node pkg="ssl_slam3" type="ssl_slam3_odom_estimation_node" name="ssl_slam3_odom_estimation_node" output="screen" />

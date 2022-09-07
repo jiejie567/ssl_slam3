@@ -27,8 +27,7 @@ find_package(OpenCV REQUIRED)
 find_package(PCL REQUIRED)
 find_package(Ceres REQUIRED)
 find_package(octomap REQUIRED)
-find_package(InferenceEngine REQUIRED)
-find_package(ngraph REQUIRED)
+
 
 include_directories(
   include
@@ -57,8 +56,7 @@ catkin_package(
 )
 
 add_executable(ssl_slam3_laser_processing_node  src/laserProcessingNode.cpp src/laserProcessingClass.cpp src/param.cpp src/utils.cpp )
-target_link_libraries(ssl_slam3_laser_processing_node ${EIGEN3_LIBRARIES} ${catkin_LIBRARIES} ${PCL_LIBRARIES} ${CERES_LIBRARIES} ${OpenCV_LIBS} ${InferenceEngine_LIBRARIES}
-        ${NGRAPH_LIBRARIES})
+target_link_libraries(ssl_slam3_laser_processing_node ${EIGEN3_LIBRARIES} ${catkin_LIBRARIES} ${PCL_LIBRARIES} ${CERES_LIBRARIES} ${OpenCV_LIBS})
 
 add_executable(ssl_slam3_odom_estimation_node src/utils.cpp src/odomEstimationNode.cpp src/param.cpp src/odomEstimationClass.cpp src/imuOptimizationFactor.cpp src/lidarOptimizationFactor.cpp src/imuPreintegrationClass.cpp src/param.cpp src/poseOptimizationFactor.cpp)
 target_link_libraries(ssl_slam3_odom_estimation_node ${EIGEN3_LIBRARIES} ${catkin_LIBRARIES} ${PCL_LIBRARIES} ${CERES_LIBRARIES} ${OpenCV_LIBS})

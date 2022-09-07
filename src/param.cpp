@@ -121,7 +121,6 @@ void LidarParam::loadParam(std::string& path){
 
     gap_line = readInt(node,"gap_line",3);
     gap_plane = readInt(node,"gap_plane",20);
-    gap_surf = readInt(node,"gap_surf",10);
 
     fsSettings.release();
 }

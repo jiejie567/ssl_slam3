@@ -197,7 +197,7 @@ Visualization Manager:
       Queue Size: 10
       Selectable: true
       Size (Pixels): 3
-      Size (m): 0.029999999329447746
+      Size (m): 0.019999999552965164
       Style: Flat Squares
       Topic: /laser_cloud_line
       Unreliable: false
@@ -324,7 +324,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/XYOrbit
-      Distance: 4.4498162269592285
+      Distance: 6.25167179107666
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -340,9 +340,9 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: -0.045202773064374924
+      Pitch: 0.18479719758033752
       Target Frame: map
-      Yaw: 2.741701364517212
+      Yaw: 2.8817028999328613
     Saved: ~
 Window Geometry:
   Displays:
@@ -363,4 +363,4 @@ Window Geometry:
     collapsed: false
   Width: 1872
   X: 83
-  Y: 61
+  Y: 24

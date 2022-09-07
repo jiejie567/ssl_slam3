@@ -30,7 +30,6 @@
 #include "utils.h"
 #include "param.h"
 #include "laserProcessingClass.h"
-//#include "torch/script.h"
 
 LaserProcessingClass laserProcessing;
 std::mutex mutex_lock;
@@ -66,11 +65,10 @@ void RGBDHandler(const sensor_msgs::ImageConstPtr& msgRGB,const sensor_msgs::Ima
     pcl::PointCloud<pcl::PointXYZRGBL>::Ptr pointcloud_edge(new pcl::PointCloud<pcl::PointXYZRGBL>());
     pcl::PointCloud<pcl::PointXYZRGBL>::Ptr cloud_plane(new pcl::PointCloud<pcl::PointXYZRGBL>());
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_filter ( new pcl::PointCloud<pcl::PointXYZRGB> ());
-    pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_surf ( new pcl::PointCloud<pcl::PointXYZRGB> ());
     static TicToc timer("laser processing");
     timer.tic();
-    laserProcessing.featureExtraction(color_pic, depth_pic, pointcloud_edge, cloud_plane, cloud_surf, cloud_filter);
-    timer.toc(10);
+    laserProcessing.featureExtraction(color_pic, depth_pic, pointcloud_edge, cloud_plane, cloud_filter);
+    timer.toc(100);
 
     ros::Time pointcloud_time = msgRGB->header.stamp;
     sensor_msgs::PointCloud2 laserCloudFilteredMsg;
@@ -91,11 +89,6 @@ void RGBDHandler(const sensor_msgs::ImageConstPtr& msgRGB,const sensor_msgs::Ima
     PlanePointsMsg.header.frame_id = "camera_depth_optical_frame";
     pubPlanePoints.publish(PlanePointsMsg);
 
-    sensor_msgs::PointCloud2 surfPointsMsg;
-    pcl::toROSMsg(*cloud_surf, surfPointsMsg);
-    surfPointsMsg.header.stamp = pointcloud_time;
-    surfPointsMsg.header.frame_id = "camera_depth_optical_frame";
-    pubSurfPoints.publish(surfPointsMsg);
 }
 
 
@@ -105,10 +98,8 @@ int main(int argc, char **argv)
     ros::NodeHandle nh;
 
     std::string file_path;
-    std::string yolo_path;
     nh.getParam("/file_path", file_path);
-    nh.getParam("/yolox_xml_path",yolo_path);
-    laserProcessing.init(file_path,yolo_path);
+    laserProcessing.init(file_path);
 
     message_filters::Subscriber<sensor_msgs::Image> rgb_sub(nh, "/camera/color/image_raw", 1);
     message_filters::Subscriber<sensor_msgs::Image> depth_sub(nh, "/camera/aligned_depth_to_color/image_raw", 1);
@@ -119,7 +110,6 @@ int main(int argc, char **argv)
     pubLaserCloudFiltered = nh.advertise<sensor_msgs::PointCloud2>("/laser_cloud_filtered", 100);
     pubLinePoints = nh.advertise<sensor_msgs::PointCloud2>("/laser_cloud_line", 100);
     pubPlanePoints = nh.advertise<sensor_msgs::PointCloud2>("/laser_cloud_plane", 100);
-    pubSurfPoints = nh.advertise<sensor_msgs::PointCloud2>("/laser_cloud_surf", 100);
 
     ros::Rate loop_rate(30);
     while (ros::ok())
