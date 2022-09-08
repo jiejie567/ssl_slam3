@@ -118,8 +118,6 @@ void LaserProcessingClass::featureExtraction(cv::Mat& color_im, cv::Mat& depth_i
     };
     typedef ahc::PlaneFitter< OrganizedImage3D > PlaneFitter;
 
-    static TicToc timer1("pre");
-    timer1.tic();
     cv::Mat_<cv::Vec3f> cloud_peac(depth_im.rows, depth_im.cols);
     cloud_filter->resize(640*480);
     omp_set_num_threads(2);
@@ -147,8 +145,6 @@ void LaserProcessingClass::featureExtraction(cv::Mat& color_im, cv::Mat& depth_i
                 pt_ptr[c][2] = z * 1000.0;//m->mm
             }
         }
-    timer1.toc(30);
-
 
     // line filter
     thread th2(&LaserProcessingClass::lineFilter, this, std::ref(color_im), std::ref(cloud_peac), std::ref(pc_out_line));
