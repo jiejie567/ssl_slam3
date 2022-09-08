@@ -21,7 +21,7 @@ find_package(catkin REQUIRED COMPONENTS
 )
 
 find_package(Eigen3)
-find_package(OpenCV REQUIRED)
+find_package(OpenCV 4.2 REQUIRED)
 find_package(PCL REQUIRED)
 find_package(Ceres REQUIRED)
 find_package(octomap REQUIRED)
@@ -32,7 +32,6 @@ include_directories(
   include/peac
   ${catkin_INCLUDE_DIRS}
   ${PCL_INCLUDE_DIRS}
-  ${CERES_INCLUDE_DIRS}
   ${EIGEN3_INCLUDE_DIRS}
   ${OCTOMAP_INCLUDE_DIRS}
   ${CMAKE_CURRENT_SOURCE_DIR}
@@ -42,7 +41,6 @@ include_directories(
 link_directories(
   include
   ${PCL_LIBRARY_DIRS}
-  ${CERES_LIBRARY_DIRS}
 )
 
 catkin_package(

@@ -30,10 +30,10 @@ lidar:
     local_map_size: 10.0
     edge_n: 1.0e-4
     plane_n: 5.0e-3
-    surf_n: 1.0e-3
+    surf_n: 5.0e-3
 
     # mapping thread
-    map_resolution: 0.08
+    map_resolution: 0.02
     map_cell_width: 50.0
     map_cell_height: 50.0
     map_cell_depth: 50.0

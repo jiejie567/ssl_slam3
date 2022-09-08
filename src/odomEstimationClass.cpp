@@ -19,34 +19,10 @@ OdomEstimationClass::OdomEstimationClass(){
     current_edge_points = pcl::PointCloud<pcl::PointXYZRGBL>::Ptr(new pcl::PointCloud<pcl::PointXYZRGBL>());
     current_plane_points = pcl::PointCloud<pcl::PointXYZRGBL>::Ptr(new pcl::PointCloud<pcl::PointXYZRGBL>());
     current_plane_num=0;
-    v_current_plane_points_num.reserve(100);
-    v_current_plane_believe_rate.reserve(100);
     pm_plane_info = new std::map<int,Eigen::Vector4d>();
-    pv_plane_info = new std::vector<Eigen::Vector4d>();
-    pv_plane_believe_rate = new std::vector<double>();
-    pv_plane_info->reserve(10000);
-    pv_plane_believe_rate->reserve(10000);
-    v_current_plane_info.reserve(100);
 
     pm_line_info = new std::map<int,Eigen::Vector4d>();
-    pv_line_point_info = new std::vector<Eigen::Vector4d>();
-    pv_line_believe_rate = new std::vector<double>();
-    pv_line_direction_info = new std::vector<Eigen::Vector4d>();
-    pv_line_endpoint1 = new std::vector<Eigen::Vector4d>();
-    pv_line_endpoint2 = new std::vector<Eigen::Vector4d>();
 
-    pv_line_point_info->reserve(10000);
-    pv_line_believe_rate->reserve(10000);
-    pv_line_direction_info->reserve(10000);
-    pv_line_endpoint1->reserve(10000);
-    pv_line_endpoint2->reserve(10000);
-
-    v_current_line_points_num.reserve(100);
-    v_current_line_believe_rate.reserve(100);
-    v_current_line_point_info.reserve(100);
-    v_current_line_direction_info.reserve(100);
-    v_current_line_endpoint1.reserve(100);
-    v_current_line_endpoint2.reserve(100);
 }
 
 void OdomEstimationClass::init(std::string& file_path){
@@ -71,36 +47,13 @@ void OdomEstimationClass::initMapWithPoints(const pcl::PointCloud<pcl::PointXYZR
     edge_kd_tree.setInputCloud(edge_map);
     plane_kd_tree.setInputCloud(plane_map);
 
-    pv_plane_info->insert(pv_plane_info->end(),v_current_plane_info.begin(),v_current_plane_info.end());
-    pv_plane_believe_rate->insert(pv_plane_believe_rate->end(),v_current_plane_believe_rate.begin(),v_current_plane_believe_rate.end());
-    pv_line_point_info->insert(pv_line_point_info->end(),v_current_line_point_info.begin(),v_current_line_point_info.end());
-    pv_line_believe_rate->insert(pv_line_believe_rate->end(),v_current_line_believe_rate.begin(),v_current_line_believe_rate.end());
-    pv_line_direction_info->insert(pv_line_direction_info->end(),v_current_line_direction_info.begin(),v_current_line_direction_info.end());
-    pv_line_endpoint1->insert(pv_line_endpoint1->end(),v_current_line_endpoint1.begin(),v_current_line_endpoint1.end());
-    pv_line_endpoint2->insert(pv_line_endpoint2->end(),v_current_line_endpoint2.begin(),v_current_line_endpoint2.end());
-
-
-
-    for(int i = 0 ;i < current_plane_num;i++)
-        (*pm_plane_info)[v_current_plane_idx[i]]=v_current_plane_info[i];
-    for(int i = 0 ;i < current_line_num;i++)
-        (*pm_line_info)[v_current_line_idx[i]]=v_current_line_direction_info[i];
+    for(const auto& it:m_current_plane_info)
+        (*pm_plane_info)[it.first] = it.second;
+    for(const auto& it:m_current_line_info)
+        (*pm_line_info)[it.first] = it.second;
 }
 
 bool OdomEstimationClass::initialize(void){
-    for (int i = 0; i < current_plane_num; ++i) {
-        pv_plane_info->emplace_back(1.0,1.0,1.0,1.0);;
-        pv_plane_believe_rate->push_back(0.f);
-
-    }
-    for (int i = 0; i < current_line_num; ++i) {
-        pv_line_point_info->emplace_back(1.0,1.0,1.0,1.0);
-//        pv_line_point_info->push_back(Eigen::Vector4d());
-        pv_line_direction_info->push_back(Eigen::Vector4d());
-        pv_line_believe_rate->push_back(0.f);
-        pv_line_endpoint1->push_back(Eigen::Vector4d());
-        pv_line_endpoint2->push_back(Eigen::Vector4d());
-    }
     if(pose_r_arr.size()<common_param.getInitFrame())
         return is_initialized;
     const int start_id = pose_r_arr.size() - common_param.getInitFrame();
@@ -175,64 +128,36 @@ void OdomEstimationClass::addImuPreintegration(std::vector<double> dt_arr, std::
 
 void OdomEstimationClass::addLidarFeature(const pcl::PointCloud<pcl::PointXYZRGBL>::Ptr edge_in,
         const pcl::PointCloud<pcl::PointXYZRGBL>::Ptr plane_in){
+    Eigen::Isometry3d T_bl = common_param.getTbl();
     // plane decode
     current_plane_num = static_cast<int>(plane_in->at(0).x);
-    Eigen::Isometry3d T_bl = common_param.getTbl();
-    std::vector<int> indexs;
-    v_current_plane_points_num.clear();
-    v_current_plane_info.clear();
     m_current_plane_info.clear();
-    v_current_plane_idx.clear();
-    v_current_plane_believe_rate.clear();
+    std::vector<int> indexs;
     for(auto i = 1;i<current_plane_num+1;i++){
         indexs.push_back(i);
-        v_current_plane_points_num.push_back(plane_in->at(i).rgb);
-        v_current_plane_believe_rate.push_back(plane_in->at(i).rgb);
     }
     for (auto i : indexs)
     {
         Eigen::Vector4d plane(plane_in->at(i).x, plane_in->at(i).y, plane_in->at(i).z, plane_in->at(i).data[3]);
         plane = T_bl.matrix().transpose().inverse()*plane;
         m_current_plane_info[plane_in->at(i).label] = plane;
-        v_current_plane_info.emplace_back(plane);
-        v_current_plane_idx.emplace_back(plane_in->at(i).label);
     }
     plane_in->erase(plane_in->begin(), plane_in->begin() + current_plane_num + 1);
 
     // line decode
     current_line_num = static_cast<int>(edge_in->at(0).x);
     std::vector<int> indexs_line;
-    v_current_line_points_num.clear();
-    v_current_line_believe_rate.clear();
-    v_current_line_point_info.clear();
-    v_current_line_direction_info.clear();
     m_current_line_info.clear();
-    v_current_line_idx.clear();
-
     for(auto i = 1;i<current_line_num+1;i++){
-        indexs_line.push_back(i*2);
+        indexs_line.push_back(i);
     }
     for (auto i : indexs_line)
     {
-        v_current_line_points_num.push_back(edge_in->at(i).rgb);
-        v_current_line_believe_rate.push_back(edge_in->at(i-1).rgb/static_cast<double>(edge_in->at(i-1).label));
-        Eigen::Vector4d line_point(edge_in->at(i-1).x,edge_in->at(i-1).y,edge_in->at(i-1).z,1.f);
         Eigen::Vector4d line_direction(edge_in->at(i).x,edge_in->at(i).y,edge_in->at(i).z,0.f);
-
-
-        line_point = T_bl.matrix()*line_point;
         line_direction = T_bl.matrix()*line_direction;
-
-
-        v_current_line_point_info.push_back(line_point);
-        v_current_line_direction_info.push_back(line_direction);
         m_current_line_info[edge_in->at(i).label] = line_direction;
-        v_current_line_idx.emplace_back(edge_in->at(i).label);
-
     }
-    edge_in->erase(edge_in->begin(),edge_in->begin()+current_line_num*2+1);
-//    cout<<"edge size: "<<current_edge_points->size()<<endl;
-//    cout<<"surf size: "<<current_surf_points->size()<<endl;
+    edge_in->erase(edge_in->begin(),edge_in->begin()+current_line_num+1);
     pcl::transformPointCloud(*edge_in, *current_edge_points, T_bl.cast<float>());
     pcl::transformPointCloud(*plane_in, *current_plane_points, T_bl.cast<float>());
 }
@@ -267,12 +192,9 @@ void OdomEstimationClass::addEdgeCost(ceres::Problem& problem, ceres::LossFuncti
                 nearCorners.push_back(tmp);
                 double two_normal_dot = tmp_current_line_info[transformed_edge->points[i].label].head(3).dot(
                         (pm_line_info->at(edge_map->points[pointSearchInd[j]].label).head(3)));
+
                 if(abs(two_normal_dot)<cos((60. - cnt*15. )* M_PI / 180.))
                 {
-                    static int num_false_line_matching = 0;
-                    num_false_line_matching++;
-                    if(num_false_line_matching%100000 == 0)
-                        cout<<"num_false_line_matching: "<<num_false_line_matching<<endl;
                     lineValid = false;
                     break;
                 }
@@ -308,98 +230,9 @@ void OdomEstimationClass::addEdgeCost(ceres::Problem& problem, ceres::LossFuncti
     if(edge_num<20){
         std::cout<<"not enough correct edge points"<<std::endl;
     }
+
 }
 
-void OdomEstimationClass::addplaneCost(ceres::Problem& problem, ceres::LossFunction *loss_function, double* pose){
-    int plane_num_matched=0;
-    Eigen::Isometry3d T_wb = Eigen::Isometry3d::Identity();
-    T_wb.linear() = Utils::so3ToR(Eigen::Vector3d(pose[0],pose[1],pose[2]));
-    T_wb.translation() = Eigen::Vector3d(pose[3],pose[4],pose[5]);
-    pcl::PointCloud<pcl::PointXYZRGBL>::Ptr transformed_plane = pcl::PointCloud<pcl::PointXYZRGBL>::Ptr(new pcl::PointCloud<pcl::PointXYZRGBL>());
-    pcl::transformPointCloud(*current_plane_points, *transformed_plane, T_wb.cast<float>());
-    int pt_idx=0;
-    for (int i = 0; i < current_plane_num; ++i) {
-        std::map<int, int> m_plane_match;
-        for (int j = 0; j < v_current_plane_points_num[i]; ++j) {
-            std::vector<int> pointSearchInd;
-            std::vector<float> pointSearchSqDis;
-            plane_kd_tree.nearestKSearch(transformed_plane->points[pt_idx], 1, pointSearchInd, pointSearchSqDis);
-            if (pointSearchSqDis[0] < 0.1) {
-                for(int k = 0;k<1;k++)
-                {
-//                    cout<<"label:"<<plane_map->points[pointSearchInd[k]].label<<endl;
-                    m_plane_match[plane_map->points[pointSearchInd[k]].label]++;
-                }
-            }
-            pt_idx++;
-        }
-        if (m_plane_match.empty()) {
-             cout<<"can't find match plane!"<<endl;
-            continue;
-        }
-        std::vector<std::pair<int, int>> v_pair_plane_matched(m_plane_match.begin(),
-                                                              m_plane_match.end());//pair fist is the idx of the plane idx in the kd tree, second is the matching count.
-        std::sort(v_pair_plane_matched.begin(), v_pair_plane_matched.end(),
-                  [](std::pair<int, int> a, std::pair<int, int> b) { return a.second > b.second; });
-
-        std::vector<Eigen::Vector4d> tmp_current_plane_info;
-        for (const auto &info:v_current_plane_info)
-            tmp_current_plane_info.emplace_back(T_wb.matrix().transpose().inverse() * info);
-        for (int j = 0; j < 1 && j < v_pair_plane_matched.size(); j++) {
-//            cout<<v_pair_plane_matched[j].first<<endl;
-            auto two_normal_dot = (T_wb.linear() * tmp_current_plane_info[i].head(3)).dot(
-                    (pm_plane_info->at(v_pair_plane_matched[j].first).head(3)));
-            if (abs(two_normal_dot) < cos(5. * M_PI / 180.)) {
-//              cout<<"current_plane_info"<<  T_wb.linear() * v_current_plane_info[i].head(3)<<endl;
-//              cout<<"target_plane info"<< pm_plane_info->at(v_pair_plane_matched[j].first).head(3)<<endl;
-//            cout<<"remove outlier"<<endl;
-//                continue;
-            }
-//            cout<<v_pair_plane_matched[j].second<<endl;
-            double  weight = v_pair_plane_matched[j].second*abs(two_normal_dot);
-            ceres::CostFunction *cost_function = new LidarPlaneFactor(v_current_plane_info[i],pm_plane_info->at(v_pair_plane_matched[j].first),
-                                                                      weight, lidar_param.getPlaneN());
-            problem.AddResidualBlock(cost_function,
-                                         new ceres::HuberLoss(0.1* weight), pose);
-//            ceres::CostFunction *cost_function =
-//                    new ceres::NumericDiffCostFunction<NumericDiffCostFunctor, ceres::CENTRAL, 1, 15>(
-//                            new NumericDiffCostFunctor(v_current_plane_info[i],
-//                                                       pv_plane_info->at(v_pair_plane_matched[j].first),
-//                                                       weight, lidar_param.getPlaneN()));
-//            problem.AddResidualBlock(cost_function,
-//                                     new ceres::HuberLoss(0.1*weight), pose);
-            plane_num_matched++;
-//        for(int j =0;j<2&&j<v_pair_plane_matched.size();j++){
-//            auto two_normal_dot = (tmp_current_plane_info[i].head(3)).dot(pv_plane_info->at(v_pair_plane_matched[j].first).head(3));
-//            if(abs(two_normal_dot)>cos(30.*M_PI/180.))//|| v_pair_plane_matched[0].second<v_current_plane_points_num[i]*0.3)
-//            {
-//                double  weight = v_pair_plane_matched[j].second*pv_plane_believe_rate->at(v_pair_plane_matched[j].first)*v_current_plane_believe_rate[i];
-////                ceres::CostFunction *cost_function = new LidarPlaneFactor(v_current_plane_info[i],pv_plane_info->at(v_pair_plane_matched[j].first),
-////                                                                          weight, lidar_param.getPlaneN());
-////                problem.AddResidualBlock(cost_function,
-////                                         new ceres::HuberLoss(0.3* weight), pose);
-//                auto current_plane_info = T_wb.matrix().transpose().inverse()*v_current_plane_info[i];
-////                std::cout<<"current_plane_closest_point"<<std::endl<<current_plane_info<<std::endl;
-////                std::cout<<"target_plane_closest_point"<<std::endl<<pv_plane_info->at(v_pair_plane_matched[j].first)<<std::endl<<std::endl;
-//                ceres::CostFunction* cost_function =
-//                        new ceres::NumericDiffCostFunction<NumericDiffCostFunctor, ceres::CENTRAL, 3, 15>(
-//                                new NumericDiffCostFunctor(v_current_plane_info[i],pv_plane_info->at(v_pair_plane_matched[j].first),
-//                                                                         1, lidar_param.getPlaneN()));
-//                                problem.AddResidualBlock(cost_function,
-//                                         new ceres::HuberLoss(0.1* 1), pose);
-//                plane_num_matched++;
-//                break;
-//            }
-//        }
-        }
-    }
-
-    if(plane_num_matched<2){
-//        std::cout<<"not enough correct plane planes"<<std::endl;
-        cout<< "plane num: "<<plane_num_matched<<endl;
-        cout<< " total plane num : "<<current_plane_num <<endl;
-    }
-}
 void OdomEstimationClass::addplane2Cost(ceres::Problem& problem, ceres::LossFunction *loss_function, double* pose, int cnt){
     int plane_num=0;
     Eigen::Isometry3d T_wb = Eigen::Isometry3d::Identity();
@@ -407,7 +240,6 @@ void OdomEstimationClass::addplane2Cost(ceres::Problem& problem, ceres::LossFunc
     T_wb.translation() = Eigen::Vector3d(pose[3],pose[4],pose[5]);
     pcl::PointCloud<pcl::PointXYZRGBL>::Ptr transformed_plane = pcl::PointCloud<pcl::PointXYZRGBL>::Ptr(new pcl::PointCloud<pcl::PointXYZRGBL>());
     pcl::transformPointCloud(*current_plane_points, *transformed_plane, T_wb.cast<float>());
-
     std::map<int,Eigen::Vector4d> tmp_current_plane_info;
     for (const auto &it:m_current_plane_info)
         tmp_current_plane_info[it.first]=T_wb.matrix().transpose().inverse() * it.second;
@@ -520,14 +352,8 @@ void OdomEstimationClass::optimize(void){
             const int pose_id = i - start_id;
             addImuCost(imu_preintegrator_arr[i], problem, loss_function, pose[pose_id], pose[pose_id+1]);
         }
-         addEdgeCost(problem, loss_function, pose[pose_size-1],iterCount);
-//         addLineCost(problem, loss_function, pose[pose_size-1]);
-        if(iterCount>2)
-            addplaneCost(problem, loss_function, pose[pose_size - 1]);
-        else
-            addplane2Cost(problem, loss_function, pose[pose_size - 1],iterCount);
-
-//        addSurfCost(problem, loss_function, pose[pose_size - 1]);
+        addEdgeCost(problem, loss_function, pose[pose_size-1],iterCount);
+        addplane2Cost(problem, loss_function, pose[pose_size - 1],iterCount);
 
         // add odometry cost factor
         for (int i = start_id; i < end_id - 1; i++){
@@ -585,83 +411,60 @@ void OdomEstimationClass::optimize(void){
 
 void OdomEstimationClass::updateLocalMap(Eigen::Isometry3d& transform){
 
-    for (auto &plane_info:v_current_plane_info){
-        plane_info = transform.matrix().transpose().inverse()*plane_info;
+    for (auto &it:m_current_plane_info){
+        it.second = transform.matrix().transpose().inverse()*it.second;
     }
-    for (auto &line_point:v_current_line_point_info){
-        line_point = transform.matrix()*line_point;
-    }
-    for(auto &end_point1:v_current_line_endpoint1){
-        end_point1 = transform.matrix()*end_point1;
-    }
-    for(auto &end_point2:v_current_line_endpoint2){
-        end_point2 = transform.matrix()*end_point2;
-    }
-    for (auto &line_direction:v_current_line_direction_info){
-        line_direction.head(3) = transform.linear()*line_direction.head(3);
+    for (auto &it:m_current_line_info){
+        it.second = transform.matrix()*it.second;
     }
 
-    pv_plane_info->insert(pv_plane_info->end(),v_current_plane_info.begin(),v_current_plane_info.end());
-    for(int i = 0 ;i < current_plane_num;i++)
-        (*pm_plane_info)[v_current_plane_idx[i]]=v_current_plane_info[i];
-    for(int i = 0 ;i < current_line_num;i++)
-        (*pm_line_info)[v_current_line_idx[i]]=v_current_line_direction_info[i];
-    pv_plane_believe_rate->insert(pv_plane_believe_rate->end(),v_current_plane_believe_rate.begin(),v_current_plane_believe_rate.end());
-    pv_line_point_info->insert(pv_line_point_info->end(),
-            v_current_line_point_info.begin(),v_current_line_point_info.end());
-    pv_line_endpoint1->insert(pv_line_endpoint1->end(),v_current_line_endpoint1.begin(),v_current_line_endpoint1.end());
-    pv_line_endpoint2->insert(pv_line_endpoint2->end(),v_current_line_endpoint2.begin(),v_current_line_endpoint2.end());
+    for(const auto& it:m_current_plane_info)
+        (*pm_plane_info)[it.first] = it.second;
+    for(const auto& it:m_current_line_info)
+        (*pm_line_info)[it.first] = it.second;
 
-    pv_line_believe_rate->insert(pv_line_believe_rate->end(),v_current_line_believe_rate.begin(),v_current_line_believe_rate.end());
-    pv_line_direction_info->insert(pv_line_direction_info->end(),
-            v_current_line_direction_info.begin(),v_current_line_direction_info.end());
+
 
     Eigen::Isometry3d delta_transform = last_pose.inverse() * current_pose;
-    double displacement = delta_transform.translation().squaredNorm();
-    Eigen::Quaterniond q_temp(delta_transform.linear());
-    double angular_change = 2 * acos(q_temp.w());
-//    if(displacement>0.5 || angular_change>3 / 180.0 * M_PI) {
-        double x_min = transform.translation().x() - lidar_param.getLocalMapSize();
-        double y_min = transform.translation().y() - lidar_param.getLocalMapSize();
-        double z_min = transform.translation().z() - lidar_param.getLocalMapSize();
-        double x_max = transform.translation().x() + lidar_param.getLocalMapSize();
-        double y_max = transform.translation().y() + lidar_param.getLocalMapSize();
-        double z_max = transform.translation().z() + lidar_param.getLocalMapSize();
+    double x_min = transform.translation().x() - lidar_param.getLocalMapSize();
+    double y_min = transform.translation().y() - lidar_param.getLocalMapSize();
+    double z_min = transform.translation().z() - lidar_param.getLocalMapSize();
+    double x_max = transform.translation().x() + lidar_param.getLocalMapSize();
+    double y_max = transform.translation().y() + lidar_param.getLocalMapSize();
+    double z_max = transform.translation().z() + lidar_param.getLocalMapSize();
 
-        pcl::CropBox<pcl::PointXYZRGBL> crop_box_filter;
-        crop_box_filter.setMin(Eigen::Vector4f(x_min, y_min, z_min, 1.0));
-        crop_box_filter.setMax(Eigen::Vector4f(x_max, y_max, z_max, 1.0));
-        crop_box_filter.setNegative(false);
+    pcl::CropBox<pcl::PointXYZRGBL> crop_box_filter;
+    crop_box_filter.setMin(Eigen::Vector4f(x_min, y_min, z_min, 1.0));
+    crop_box_filter.setMax(Eigen::Vector4f(x_max, y_max, z_max, 1.0));
+    crop_box_filter.setNegative(false);
 
 
-        pcl::PointCloud<pcl::PointXYZRGBL>::Ptr edge_map_temp(new pcl::PointCloud<pcl::PointXYZRGBL>());
-        pcl::PointCloud<pcl::PointXYZRGBL>::Ptr plane_map_temp(new pcl::PointCloud<pcl::PointXYZRGBL>());
-        pcl::PointCloud<pcl::PointXYZRGB>::Ptr surf_map_temp(new pcl::PointCloud<pcl::PointXYZRGB>());
+    pcl::PointCloud<pcl::PointXYZRGBL>::Ptr edge_map_temp(new pcl::PointCloud<pcl::PointXYZRGBL>());
+    pcl::PointCloud<pcl::PointXYZRGBL>::Ptr plane_map_temp(new pcl::PointCloud<pcl::PointXYZRGBL>());
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr surf_map_temp(new pcl::PointCloud<pcl::PointXYZRGB>());
 
-        crop_box_filter.setInputCloud(edge_map);
-        crop_box_filter.filter(*edge_map_temp);
-        crop_box_filter.setInputCloud(plane_map);
-        crop_box_filter.filter(*plane_map_temp);
-
-
-        pcl::PointCloud<pcl::PointXYZRGBL>::Ptr transformed_edge = pcl::PointCloud<pcl::PointXYZRGBL>::Ptr(new pcl::PointCloud<pcl::PointXYZRGBL>());
-        pcl::transformPointCloud(*current_edge_points, *transformed_edge, transform.cast<float>());
-        pcl::PointCloud<pcl::PointXYZRGBL>::Ptr transformed_plane = pcl::PointCloud<pcl::PointXYZRGBL>::Ptr(new pcl::PointCloud<pcl::PointXYZRGBL>());
-        pcl::transformPointCloud(*current_plane_points, *transformed_plane, transform.cast<float>());
-
-        edge_downsize_filter.setInputCloud(edge_map_temp);
-        edge_downsize_filter.filter(*edge_map);
-        plane_downsize_filter.setInputCloud(plane_map_temp);
-        plane_downsize_filter.filter(*plane_map);
+    crop_box_filter.setInputCloud(edge_map);
+    crop_box_filter.filter(*edge_map_temp);
+    crop_box_filter.setInputCloud(plane_map);
+    crop_box_filter.filter(*plane_map_temp);
 
 
-        last_pose = current_pose;
-        *edge_map += *transformed_edge;
-        *plane_map += *transformed_plane;
-        edge_kd_tree.setInputCloud(edge_map);
-        plane_kd_tree.setInputCloud(plane_map);
-//        edge_kd_tree.setInputCloud(edge_map_temp);
-//        plane_kd_tree.setInputCloud(plane_map_temp);
-//    }
+    pcl::PointCloud<pcl::PointXYZRGBL>::Ptr transformed_edge = pcl::PointCloud<pcl::PointXYZRGBL>::Ptr(new pcl::PointCloud<pcl::PointXYZRGBL>());
+    pcl::transformPointCloud(*current_edge_points, *transformed_edge, transform.cast<float>());
+    pcl::PointCloud<pcl::PointXYZRGBL>::Ptr transformed_plane = pcl::PointCloud<pcl::PointXYZRGBL>::Ptr(new pcl::PointCloud<pcl::PointXYZRGBL>());
+    pcl::transformPointCloud(*current_plane_points, *transformed_plane, transform.cast<float>());
+
+    edge_downsize_filter.setInputCloud(edge_map_temp);
+    edge_downsize_filter.filter(*edge_map);
+    plane_downsize_filter.setInputCloud(plane_map_temp);
+    plane_downsize_filter.filter(*plane_map);
+
+
+    last_pose = current_pose;
+    *edge_map += *transformed_edge;
+    *plane_map += *transformed_plane;
+    edge_kd_tree.setInputCloud(edge_map);
+    plane_kd_tree.setInputCloud(plane_map);
+
 
 }
