@@ -6,6 +6,13 @@
 
 OdomEstimationClass::OdomEstimationClass(){
     Eigen::Isometry3d pose = Eigen::Isometry3d::Identity();
+    pose_r_arr.reserve(1000);
+    pose_t_arr.reserve(1000);
+    pose_v_arr.reserve(1000);
+    pose_b_a_arr.reserve(1000);
+    pose_b_g_arr.reserve(1000);
+    imu_preintegrator_arr.reserve(1000);
+
     pose_r_arr.push_back(Utils::RToso3(pose.linear()));
     pose_t_arr.push_back(pose.translation());
     pose_v_arr.push_back(Eigen::Vector3d::Zero());
@@ -17,10 +24,16 @@ OdomEstimationClass::OdomEstimationClass(){
     edge_map = pcl::PointCloud<pcl::PointXYZRGBL>::Ptr(new pcl::PointCloud<pcl::PointXYZRGBL>());
     plane_map = pcl::PointCloud<pcl::PointXYZRGBL>::Ptr(new pcl::PointCloud<pcl::PointXYZRGBL>());
     current_edge_points = pcl::PointCloud<pcl::PointXYZRGBL>::Ptr(new pcl::PointCloud<pcl::PointXYZRGBL>());
+    current_edge_points->reserve(1000);
     current_plane_points = pcl::PointCloud<pcl::PointXYZRGBL>::Ptr(new pcl::PointCloud<pcl::PointXYZRGBL>());
+    current_plane_points->reserve(1000);
+
+    edge_map->reserve(100000);
+    plane_map->reserve(100000);
+
+
     current_plane_num=0;
     pm_plane_info = new std::map<int,Eigen::Vector4d>();
-
     pm_line_info = new std::map<int,Eigen::Vector4d>();
 
 }
@@ -233,7 +246,7 @@ void OdomEstimationClass::addEdgeCost(ceres::Problem& problem, ceres::LossFuncti
 
 }
 
-void OdomEstimationClass::addplane2Cost(ceres::Problem& problem, ceres::LossFunction *loss_function, double* pose, int cnt){
+void OdomEstimationClass::addPlaneCost(ceres::Problem& problem, ceres::LossFunction *loss_function, double* pose, int cnt){
     int plane_num=0;
     Eigen::Isometry3d T_wb = Eigen::Isometry3d::Identity();
     T_wb.linear() = Utils::so3ToR(Eigen::Vector3d(pose[0],pose[1],pose[2]));
@@ -283,10 +296,7 @@ void OdomEstimationClass::addplane2Cost(ceres::Problem& problem, ceres::LossFunc
             Eigen::Vector3d curr_point(current_plane_points->points[i].x, current_plane_points->points[i].y, current_plane_points->points[i].z);
             if (planeValid)
             {
-                ceres::CostFunction *cost_function = new LidarSurfFactor(curr_point, norm, negative_OA_dot_norm, lidar_param.getSurfN());
-//                ceres::CostFunction *cost_function = new LidarSurfFactor(curr_point, norm, negative_OA_dot_norm,
-//                        lidar_param.getPlaneN()/current_plane_points->points[i].label);
-
+                ceres::CostFunction *cost_function = new LidarPlaneFactor(curr_point, norm, negative_OA_dot_norm, lidar_param.getPlaneN());
                 problem.AddResidualBlock(cost_function, loss_function, pose);
                 plane_num++;
             }
@@ -298,7 +308,7 @@ void OdomEstimationClass::addplane2Cost(ceres::Problem& problem, ceres::LossFunc
     }
 }
 void OdomEstimationClass::addImuCost(ImuPreintegrationClass& imu_integrator, ceres::Problem& problem, ceres::LossFunction *loss_function, double* pose1, double* pose2){
-    ImuPreintegrationFactor* imu_factor = new ImuPreintegrationFactor(imu_integrator);
+    auto* imu_factor = new ImuPreintegrationFactor(imu_integrator);
     problem.AddResidualBlock(imu_factor, loss_function, pose1, pose2);
 }
 
@@ -307,7 +317,7 @@ void OdomEstimationClass::addOdometryCost(const Eigen::Isometry3d& odom, ceres::
     problem.AddResidualBlock(odom_factor, loss_function, pose1, pose2);
 }
 
-void OdomEstimationClass::optimize(void){
+void OdomEstimationClass::optimize(){
     if(imu_preintegrator_arr.size()!= lidar_odom_arr.size() || lidar_odom_arr.size() != pose_r_arr.size()-1)
         ROS_WARN("pose num and imu num are not properly aligned");
 
@@ -353,7 +363,7 @@ void OdomEstimationClass::optimize(void){
             addImuCost(imu_preintegrator_arr[i], problem, loss_function, pose[pose_id], pose[pose_id+1]);
         }
         addEdgeCost(problem, loss_function, pose[pose_size-1],iterCount);
-        addplane2Cost(problem, loss_function, pose[pose_size - 1],iterCount);
+        addPlaneCost(problem, loss_function, pose[pose_size - 1], iterCount);
 
         // add odometry cost factor
         for (int i = start_id; i < end_id - 1; i++){
@@ -365,13 +375,10 @@ void OdomEstimationClass::optimize(void){
         options.max_num_iterations = 6;
         options.gradient_check_relative_precision = 1e-4;
         options.max_solver_time_in_seconds = 0.03;
-//        options.max_solver_time_in_seconds = 0.15;
         options.num_threads = common_param.getCoreNum();
         ceres::Solver::Summary summary;
         ceres::Solve(options, &problem, &summary);
-//        cout<<summary.BriefReport()<<endl;
     }
-//    cout<<"-------------"<<endl<<endl;
     for(int i = start_id; i<= end_id; i++){
         const int pose_id = i - start_id;
         pose_r_arr[i].x() = pose[pose_id][0];
@@ -401,11 +408,11 @@ void OdomEstimationClass::optimize(void){
         lidar_odom_arr[i].translation() = last_R.transpose() * (pose_t_arr[i+1] - pose_t_arr[i]);
     }
     current_pose = lidar_odom_arr[end_id];
-            // update map
-    Eigen::Isometry3d current_pose = Eigen::Isometry3d::Identity();
-    current_pose.linear() = Utils::so3ToR(pose_r_arr.back());
-    current_pose.translation() = pose_t_arr.back();
-    updateLocalMap(current_pose);
+    // update map
+    Eigen::Isometry3d current_pose_tmp = Eigen::Isometry3d::Identity();
+    current_pose_tmp.linear() = Utils::so3ToR(pose_r_arr.back());
+    current_pose_tmp.translation() = pose_t_arr.back();
+    updateLocalMap(current_pose_tmp);
 }
 
 
@@ -423,8 +430,6 @@ void OdomEstimationClass::updateLocalMap(Eigen::Isometry3d& transform){
     for(const auto& it:m_current_line_info)
         (*pm_line_info)[it.first] = it.second;
 
-
-
     Eigen::Isometry3d delta_transform = last_pose.inverse() * current_pose;
     double x_min = transform.translation().x() - lidar_param.getLocalMapSize();
     double y_min = transform.translation().y() - lidar_param.getLocalMapSize();
@@ -438,33 +443,23 @@ void OdomEstimationClass::updateLocalMap(Eigen::Isometry3d& transform){
     crop_box_filter.setMax(Eigen::Vector4f(x_max, y_max, z_max, 1.0));
     crop_box_filter.setNegative(false);
 
-
-    pcl::PointCloud<pcl::PointXYZRGBL>::Ptr edge_map_temp(new pcl::PointCloud<pcl::PointXYZRGBL>());
-    pcl::PointCloud<pcl::PointXYZRGBL>::Ptr plane_map_temp(new pcl::PointCloud<pcl::PointXYZRGBL>());
-    pcl::PointCloud<pcl::PointXYZRGB>::Ptr surf_map_temp(new pcl::PointCloud<pcl::PointXYZRGB>());
-
     crop_box_filter.setInputCloud(edge_map);
-    crop_box_filter.filter(*edge_map_temp);
+    crop_box_filter.filter(*edge_map);
     crop_box_filter.setInputCloud(plane_map);
-    crop_box_filter.filter(*plane_map_temp);
+    crop_box_filter.filter(*plane_map);
 
+    pcl::transformPointCloud(*current_edge_points, *current_edge_points, transform.cast<float>());
+    pcl::transformPointCloud(*current_plane_points, *current_plane_points, transform.cast<float>());
 
-    pcl::PointCloud<pcl::PointXYZRGBL>::Ptr transformed_edge = pcl::PointCloud<pcl::PointXYZRGBL>::Ptr(new pcl::PointCloud<pcl::PointXYZRGBL>());
-    pcl::transformPointCloud(*current_edge_points, *transformed_edge, transform.cast<float>());
-    pcl::PointCloud<pcl::PointXYZRGBL>::Ptr transformed_plane = pcl::PointCloud<pcl::PointXYZRGBL>::Ptr(new pcl::PointCloud<pcl::PointXYZRGBL>());
-    pcl::transformPointCloud(*current_plane_points, *transformed_plane, transform.cast<float>());
-
-    edge_downsize_filter.setInputCloud(edge_map_temp);
+    edge_downsize_filter.setInputCloud(edge_map);
     edge_downsize_filter.filter(*edge_map);
-    plane_downsize_filter.setInputCloud(plane_map_temp);
+    plane_downsize_filter.setInputCloud(plane_map);
     plane_downsize_filter.filter(*plane_map);
 
 
     last_pose = current_pose;
-    *edge_map += *transformed_edge;
-    *plane_map += *transformed_plane;
+    *edge_map += *current_edge_points;
+    *plane_map += *current_plane_points;
     edge_kd_tree.setInputCloud(edge_map);
     plane_kd_tree.setInputCloud(plane_map);
-
-
 }

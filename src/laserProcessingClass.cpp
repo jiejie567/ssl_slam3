@@ -3,6 +3,8 @@
 // Homepage https://wanghan.pro
 #include "laserProcessingClass.h"
 #include <thread>
+#include "omp.h"
+
 
 void LaserProcessingClass::init(std::string& file_path){
 
@@ -35,17 +37,17 @@ void LaserProcessingClass::init(std::string& file_path){
     pcl::PointCloud<pcl::PointXYZRGBL>::Ptr cloud_all_line(new pcl::PointCloud<pcl::PointXYZRGBL>);
     pcl::PointCloud<pcl::PointXYZRGBL>::Ptr line_info_cloud(new pcl::PointCloud<pcl::PointXYZRGBL>);
     int line_cnt = 0;
-    for( size_t i = 0; i < lines_fld.size(); i++ )
+    for(auto &  l: lines_fld)
     {
-        cv::Vec4i l = lines_fld[i];
         cv::LineIterator lit(color_im, cv::Point(l[0],l[1]), cv::Point(l[2],l[3]));//todo Note
         pcl::PointCloud<pcl::PointXYZRGBL>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGBL>);
+        cloud->reserve(100);
         int gap_tmp_line = gap_line;
         if(lit.count < gap_tmp_line * 5)
             gap_tmp_line = gap_tmp_line / 2;
-        for(int i = 0; i < lit.count; ++i, ++lit)
+        for(int  j = 0; j < lit.count; ++j, ++lit)
         {
-            if(i % gap_tmp_line == 0) {
+            if(j % gap_tmp_line == 0) {
                 int col = lit.pos().x;
                 int row = lit.pos().y;
                 pcl::PointXYZRGBL pt;
@@ -58,7 +60,7 @@ void LaserProcessingClass::init(std::string& file_path){
                 pt.g = color_im.ptr<uchar>(row)[col * 3 + 1];
                 pt.r = color_im.ptr<uchar>(row)[col * 3 + 2];
                 pt.label = num_of_line;
-                cloud->push_back(pt);
+                cloud->emplace_back(pt);
             }
         }
 
@@ -116,9 +118,14 @@ void LaserProcessingClass::featureExtraction(cv::Mat& color_im, cv::Mat& depth_i
     };
     typedef ahc::PlaneFitter< OrganizedImage3D > PlaneFitter;
 
+    static TicToc timer1("pre");
+    timer1.tic();
     cv::Mat_<cv::Vec3f> cloud_peac(depth_im.rows, depth_im.cols);
-        for (int r = 0; r < depth_im.rows; r++) {
-            const float *depth_ptr = depth_im.ptr<float>(r);
+    cloud_filter->resize(640*480);
+    omp_set_num_threads(2);
+#pragma omp parallel for
+    for (int r = 0; r < depth_im.rows; r++) {
+        const float *depth_ptr = depth_im.ptr<float>(r);
             cv::Vec3f *pt_ptr = cloud_peac.ptr<cv::Vec3f>(r);
             for (int c = 0; c < depth_im.cols; c++) {
                 float z = (float) depth_ptr[c] / lidar_param.camera_factor;
@@ -126,7 +133,7 @@ void LaserProcessingClass::featureExtraction(cv::Mat& color_im, cv::Mat& depth_i
                     z = 0.0;
                     depth_im.at<float>(r, c) = 0;
                 }
-                pcl::PointXYZRGB p;
+                pcl::PointXYZRGB& p= cloud_filter->points[r*depth_im.cols+c];
                 p.z = z;
                 p.x = (c - lidar_param.camera_cx) * p.z / lidar_param.camera_fx;
                 p.y = (r - lidar_param.camera_cy) * p.z / lidar_param.camera_fy;
@@ -134,13 +141,15 @@ void LaserProcessingClass::featureExtraction(cv::Mat& color_im, cv::Mat& depth_i
                 p.b = color_im.ptr<uchar>(r)[c * 3];
                 p.g = color_im.ptr<uchar>(r)[c * 3 + 1];
                 p.r = color_im.ptr<uchar>(r)[c * 3 + 2];
-                cloud_filter->push_back(p);
 
                 pt_ptr[c][0] = p.x * 1000.0;//m->mm
                 pt_ptr[c][1] = p.y * 1000.0;//m->mm
                 pt_ptr[c][2] = z * 1000.0;//m->mm
             }
         }
+    timer1.toc(30);
+
+
     // line filter
     thread th2(&LaserProcessingClass::lineFilter, this, std::ref(color_im), std::ref(cloud_peac), std::ref(pc_out_line));
 
@@ -163,9 +172,9 @@ void LaserProcessingClass::featureExtraction(cv::Mat& color_im, cv::Mat& depth_i
     pcl::PointCloud<pcl::PointXYZRGBL>::Ptr plane_info_cloud(new pcl::PointCloud<pcl::PointXYZRGBL>);
     int plane_cnt = 0;
 
-
     for(auto idx_plane = 0; idx_plane<vSeg.size();idx_plane++) {
         pcl::PointCloud<pcl::PointXYZRGBL>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGBL>);
+        cloud->reserve(1000);
         for (auto idx_idx = 0; idx_idx < vSeg[idx_plane].size(); idx_idx++) {
             pcl::PointXYZRGBL pt;
             int pt_idx = vSeg[idx_plane].at(idx_idx);
@@ -181,8 +190,7 @@ void LaserProcessingClass::featureExtraction(cv::Mat& color_im, cv::Mat& depth_i
                 pt.g = seg.ptr<uchar>(row)[col * 3 + 1];
                 pt.r = seg.ptr<uchar>(row)[col * 3 + 2];
                 pt.label = num_of_plane;
-
-                cloud->push_back(pt);
+                cloud->emplace_back(pt);
             }
         }
 

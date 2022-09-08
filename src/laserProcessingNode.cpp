@@ -37,7 +37,6 @@ std::queue<sensor_msgs::PointCloud2ConstPtr> pointCloudBuf;
 
 ros::Publisher pubLinePoints;
 ros::Publisher pubPlanePoints;
-ros::Publisher pubSurfPoints;
 
 ros::Publisher pubLaserCloudFiltered;
 
@@ -53,7 +52,7 @@ void RGBDHandler(const sensor_msgs::ImageConstPtr& msgRGB,const sensor_msgs::Ima
 
     //read data
 //    laserProcessing.frame_count++;
-//    if(laserProcessing.frame_count%5!=0)
+//    if(laserProcessing.frame_count%3!=0)
 //        return;
     cv_bridge::CvImagePtr color_ptr, depth_ptr;
     cv::Mat color_pic, depth_pic;
@@ -62,12 +61,12 @@ void RGBDHandler(const sensor_msgs::ImageConstPtr& msgRGB,const sensor_msgs::Ima
     depth_ptr = cv_bridge::toCvCopy(msgD, sensor_msgs::image_encodings::TYPE_32FC1);
     depth_pic = depth_ptr->image;
 
-    pcl::PointCloud<pcl::PointXYZRGBL>::Ptr pointcloud_edge(new pcl::PointCloud<pcl::PointXYZRGBL>());
+    pcl::PointCloud<pcl::PointXYZRGBL>::Ptr pointcloud_line(new pcl::PointCloud<pcl::PointXYZRGBL>());
     pcl::PointCloud<pcl::PointXYZRGBL>::Ptr cloud_plane(new pcl::PointCloud<pcl::PointXYZRGBL>());
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_filter ( new pcl::PointCloud<pcl::PointXYZRGB> ());
     static TicToc timer("laser processing");
     timer.tic();
-    laserProcessing.featureExtraction(color_pic, depth_pic, pointcloud_edge, cloud_plane, cloud_filter);
+    laserProcessing.featureExtraction(color_pic, depth_pic, pointcloud_line, cloud_plane, cloud_filter);
     timer.toc(100);
 
     ros::Time pointcloud_time = msgRGB->header.stamp;
@@ -78,7 +77,7 @@ void RGBDHandler(const sensor_msgs::ImageConstPtr& msgRGB,const sensor_msgs::Ima
     pubLaserCloudFiltered.publish(laserCloudFilteredMsg);
 
     sensor_msgs::PointCloud2 LinePointsMsg;
-    pcl::toROSMsg(*pointcloud_edge, LinePointsMsg);
+    pcl::toROSMsg(*pointcloud_line, LinePointsMsg);
     LinePointsMsg.header.stamp = pointcloud_time;
     LinePointsMsg.header.frame_id = "camera_depth_optical_frame";
     pubLinePoints.publish(LinePointsMsg);

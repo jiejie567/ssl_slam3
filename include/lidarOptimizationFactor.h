@@ -31,35 +31,11 @@ public:
 	double sqrt_info;
 };
 
-class LidarPlaneFactor : public ceres::SizedCostFunction<3, 15> {
+
+class LidarPlaneFactor : public ceres::SizedCostFunction<1, 15> {
 public:
-    LidarPlaneFactor(Eigen::Vector4d current_plane_hessian, Eigen::Vector4d traget_plane_hessian, int quantity_plane_matched, double covariance_in);
+    LidarPlaneFactor(Eigen::Vector3d curr_point_in, Eigen::Vector3d plane_unit_norm_in, double negative_OA_dot_norm_in, double covariance_in);
     virtual ~LidarPlaneFactor() {}
-    virtual bool Evaluate(double const *const *parameters, double *residuals, double **jacobians) const;
-
-    Eigen::Vector4d current_plane_hessian_;
-    Eigen::Vector4d target_plane_hessian_;
-    double sqrt_info;
-    int quantity_plane_matched_;
-};
-
-class LidarLineFactor : public ceres::SizedCostFunction<1, 15> {
-public:
-    LidarLineFactor(Eigen::Vector4d curr_end_, Eigen::Vector4d last_point_a_in, Eigen::Vector4d last_point_b_in, double covariance_in,
-    double weight);
-    virtual ~LidarLineFactor() {}
-    virtual bool Evaluate(double const *const *parameters, double *residuals, double **jacobians) const;
-
-    Eigen::Vector3d curr_end_pt;
-    Eigen::Vector3d last_point_a;
-    Eigen::Vector3d last_point_b;
-    double sqrt_info;
-    double weight_;
-};
-class LidarSurfFactor : public ceres::SizedCostFunction<1, 15> {
-public:
-    LidarSurfFactor(Eigen::Vector3d curr_point_in, Eigen::Vector3d plane_unit_norm_in, double negative_OA_dot_norm_in, double covariance_in);
-    virtual ~LidarSurfFactor() {}
     virtual bool Evaluate(double const *const *parameters, double *residuals, double **jacobians) const;
 
     Eigen::Vector3d curr_point;

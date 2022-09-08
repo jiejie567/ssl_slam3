@@ -94,7 +94,7 @@ class OdomEstimationClass{
 
 		void addEdgeCost(ceres::Problem& problem, ceres::LossFunction *loss_function, double* pose, int cnt);
 
-    void addplane2Cost(ceres::Problem& problem, ceres::LossFunction *loss_function, double* pose, int cnt);
+    void addPlaneCost(ceres::Problem& problem, ceres::LossFunction *loss_function, double* pose, int cnt);
         void addOdometryCost(const Eigen::Isometry3d& odom, ceres::Problem& problem, ceres::LossFunction *loss_function, double* pose1, double* pose2);
 		void addImuCost(ImuPreintegrationClass& imu_integrator, ceres::Problem& problem, ceres::LossFunction *loss_function, double* pose1, double* pose2);
 		void updateLocalMap(Eigen::Isometry3d& transform);

@@ -29,11 +29,10 @@ lidar:
     local_map_resolution: 0.05
     local_map_size: 10.0
     edge_n: 1.0e-4
-    plane_n: 5.0e-3
-    surf_n: 5.0e-3
+    plane_n: 1.0e-3
 
     # mapping thread
-    map_resolution: 0.02
+    map_resolution: 0.03
     map_cell_width: 50.0
     map_cell_height: 50.0
     map_cell_depth: 50.0
@@ -43,7 +42,6 @@ lidar:
 
     gap_plane: 30
     gap_line: 25
-    gap_surf: 10
 
 imu:
     # note that we follow the value unit from kalibr  link:https://github.com/ethz-asl/kalibr/wiki/IMU-Noise-Model

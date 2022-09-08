@@ -23,7 +23,7 @@ lidar:
     camera_fx: 382.260070800781
     camera_fy: 381.830932617188
     min_distance: 0.6
-    max_distance: 4.0
+    max_distance: 3.0
     horizontal_angle: 70.0
     odom_n_rpy: 6.0e-2
     odom_n_xyz: 6.0e-2
@@ -41,9 +41,8 @@ lidar:
     map_cell_height_range: 4
     map_cell_depth_range: 4
 
-    gap_plane: 25
-    gap_line: 6
-    gap_surf: 30
+    gap_plane: 20
+    gap_line: 20
 imu:
     # note that we follow the value unit from kalibr  link:https://github.com/ethz-asl/kalibr/wiki/IMU-Noise-Model
     # if you use imu_utils, the result is in discrete time, you can simply set frequency to 1

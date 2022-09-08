@@ -96,7 +96,6 @@ void LidarParam::loadParam(std::string& path){
     camera_fy = readDouble(node,"camera_fy",597.795);
     min_distance = readDouble(node,"min_distance",0.25);
     max_distance = readDouble(node,"max_distance",9.0);
-    horizontal_angle = readDouble(node,"horizontal_angle",70.0);
     map_resolution = readDouble(node,"map_resolution",0.05);
     frequency = readInt(node,"frequency",30);
 
@@ -108,7 +107,6 @@ void LidarParam::loadParam(std::string& path){
     }
     edge_n = readDouble(node,"edge_n",1e-3);
     plane_n = readDouble(node, "plane_n", 1e-3);
-    surf_n = readDouble(node, "surf_n", 1e-2);
     local_map_size = readDouble(node,"local_map_size",10.0);
     local_map_resolution = readDouble(node,"local_map_resolution",0.05);
 
@@ -125,9 +123,6 @@ void LidarParam::loadParam(std::string& path){
     fsSettings.release();
 }
 
-double LidarParam::getHorizontalAngle(){
-    return horizontal_angle;
-}
 double LidarParam::getMapResolution(){
     return map_resolution;
 }
@@ -140,9 +135,7 @@ double LidarParam::getEdgeN(){
 double LidarParam::getPlaneN(){
     return plane_n;
 }
-double LidarParam::getSurfN(){
-    return surf_n;
-}
+
 double LidarParam::getLocalMapResolution(){
     return local_map_resolution;
 }

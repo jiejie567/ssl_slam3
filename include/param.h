@@ -33,12 +33,10 @@ class LidarParam{
     public:
         LidarParam(){};
         void loadParam(std::string& path);
-        double getHorizontalAngle(void);
         double getMapResolution(void);
         Eigen::Matrix<double, 6, 1> getOdomN(void);
         double getEdgeN();
         double getPlaneN();
-        double getSurfN();
         double getLocalMapSize(void);
         double getLocalMapResolution(void);
         double getMapCellWidth(void);
@@ -56,7 +54,6 @@ class LidarParam{
         double max_distance;
         int gap_plane;
         int gap_line;
-        int gap_surf;
     private:
         int frequency;
         double horizontal_angle;
@@ -64,7 +61,6 @@ class LidarParam{
         Eigen::Matrix<double, 6, 1> odom_n;
         double edge_n;
         double plane_n;
-        double surf_n;
         double local_map_resolution;
         double local_map_size;
         double map_cell_width;
