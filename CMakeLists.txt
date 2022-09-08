@@ -3,8 +3,6 @@ project(ssl_slam3)
 #add_definitions(-w)
 set(CMAKE_BUILD_TYPE "Release")
 set(CMAKE_CXX_STANDARD 14)
-#set(CMAKE_CXX_FLAGS_RELEASE "-O3 -Wall -g")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${TORCH_CXX_FLAGS}")
 
 find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
@@ -37,7 +35,6 @@ include_directories(
   ${CERES_INCLUDE_DIRS}
   ${EIGEN3_INCLUDE_DIRS}
   ${OCTOMAP_INCLUDE_DIRS}
-  ${Torch_INCLUDE_DIRS}
   ${CMAKE_CURRENT_SOURCE_DIR}
   ${CMAKE_CURRENT_BINARY_DIR}
 )
@@ -46,7 +43,6 @@ link_directories(
   include
   ${PCL_LIBRARY_DIRS}
   ${CERES_LIBRARY_DIRS}
-    ${NGRAPH_LIBRARIES}
 )
 
 catkin_package(

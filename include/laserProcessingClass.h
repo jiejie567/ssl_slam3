@@ -49,7 +49,7 @@ class LaserProcessingClass {
 		void init(std::string& file_path);
         void featureExtraction(cv::Mat& color_im,cv::Mat& depth_im, pcl::PointCloud<pcl::PointXYZRGBL>::Ptr& pc_out_line,
                 pcl::PointCloud<pcl::PointXYZRGBL>::Ptr& pc_out_surf, pcl::PointCloud<pcl::PointXYZRGB>::Ptr& cloud_filter);
-
+        void lineFilter(cv::Mat& color_im,cv::Mat_<cv::Vec3f>& cloud_peac,pcl::PointCloud<pcl::PointXYZRGBL>::Ptr& pc_out_line);
     int frame_count;
         LidarParam lidar_param;
     private:
