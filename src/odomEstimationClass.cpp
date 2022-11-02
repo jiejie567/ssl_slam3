@@ -358,7 +358,7 @@ void OdomEstimationClass::optimize(){
         }
 
         //add imu cost factor
-        for (int i = start_id; i < end_id; i++){
+        for (int i = end_id-1; i < end_id; i++){
             const int pose_id = i - start_id;
             addImuCost(imu_preintegrator_arr[i], problem, loss_function, pose[pose_id], pose[pose_id+1]);
         }
@@ -368,7 +368,7 @@ void OdomEstimationClass::optimize(){
         // add odometry cost factor
         for (int i = start_id; i < end_id - 1; i++){
             const int pose_id = i - start_id;
-            addOdometryCost(lidar_odom_arr[i], problem, loss_function, pose[pose_id], pose[pose_id+1]);
+//            addOdometryCost(lidar_odom_arr[i], problem, loss_function, pose[pose_id], pose[pose_id+1]);
         }
         ceres::Solver::Options options;
         options.linear_solver_type = ceres::DENSE_QR;
