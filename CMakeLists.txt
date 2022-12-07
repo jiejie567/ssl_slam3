@@ -54,3 +54,6 @@ target_link_libraries(ssl_slam3_odom_estimation_node ${EIGEN3_LIBRARIES} ${catki
 
 add_executable(ssl_slam3_laser_mapping_node src/laserMappingNode.cpp src/utils.cpp src/laserMappingClass.cpp src/param.cpp)
 target_link_libraries(ssl_slam3_laser_mapping_node ${EIGEN3_LIBRARIES} ${catkin_LIBRARIES} ${PCL_LIBRARIES} ${CERES_LIBRARIES} ${OpenCV_LIBS})
+
+add_executable(ssl_slam3_trajectory_listener src/tools/trajectory_listener.cpp)
+target_link_libraries(ssl_slam3_trajectory_listener ${catkin_LIBRARIES})
